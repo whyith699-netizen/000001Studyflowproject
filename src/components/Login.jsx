@@ -15,7 +15,24 @@ const Login = () => {
       navigate('/dashboard');
     } catch (err) {
       console.error("Login failed:", err);
-      setError("Failed to login with Google. Please try again.");
+      console.error("Error code:", err.code);
+      console.error("Error message:", err.message);
+      
+      // More descriptive error messages
+      let errorMessage = "Failed to login with Google. ";
+      if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage += "Login popup was closed.";
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage += "Popup blocked by browser. Please allow popups.";
+      } else if (err.code === 'auth/unauthorized-domain') {
+        errorMessage += "This domain is not authorized. Please add it to Firebase Console.";
+      } else if (err.code === 'auth/operation-not-allowed') {
+        errorMessage += "Google Sign-In is not enabled in Firebase Console.";
+      } else {
+        errorMessage += err.message || "Please try again.";
+      }
+      
+      setError(errorMessage);
     }
   };
 
