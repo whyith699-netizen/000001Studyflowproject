@@ -22,7 +22,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-md flex-shrink-0 hidden md:block">
+      <aside className="w-64 bg-white shadow-md flex-shrink-0 hidden md:block relative">
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-blue-600 flex items-center gap-2">
             <span className="text-3xl">📚</span> Study Flow
