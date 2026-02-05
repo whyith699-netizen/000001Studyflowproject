@@ -173,74 +173,82 @@ const CoursesPage = () => {
       <Sidebar user={user} />
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-8 md:px-10 md:py-10">
+        <div className="flex-1 max-w-[1200px] w-full mx-auto px-4 py-4 md:px-6 md:py-5">
           {/* Header */}
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm mb-4">
+            {/* Top Row: Title & Add Button */}
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <i className="fas fa-chalkboard text-blue-600 text-xl"></i>
-                <h1 className="text-lg font-semibold text-gray-900">My Classes</h1>
+                <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-xl">
+                  <i className="fas fa-chalkboard text-blue-600 text-lg"></i>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">My Classes</h1>
+                  <p className="text-xs text-gray-500">{classes.length} classes total</p>
+                </div>
               </div>
               
-              {/* Search */}
-              <div className="relative">
-                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm w-32 focus:w-40 focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
-                />
-              </div>
-
-              {/* Add Button */}
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-all shadow-sm"
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
               >
                 <i className="fas fa-plus"></i>
                 Add Class
               </button>
             </div>
 
-            {/* Day Filter */}
-            <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-              <button
-                onClick={() => setFilterDay('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex-shrink-0 ${
-                  filterDay === 'all'
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                All
-              </button>
-              {DAYS.map(day => (
+            {/* Bottom Row: Search & Day Filter */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Search */}
+              <div className="relative flex-shrink-0">
+                <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search classes..."
+                  className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm w-48 focus:w-56 focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                />
+              </div>
+
+              {/* Day Filter */}
+              <div className="flex gap-1.5 flex-1 overflow-x-auto">
                 <button
-                  key={day.value}
-                  onClick={() => setFilterDay(day.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex-shrink-0 ${
-                    filterDay === day.value
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  onClick={() => setFilterDay('all')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 ${
+                    filterDay === 'all'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {day.label}
+                  All
                 </button>
-              ))}
+                {DAYS.map(day => (
+                  <button
+                    key={day.value}
+                    onClick={() => setFilterDay(day.value)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 ${
+                      filterDay === day.value
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Classes Grid */}
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+          <div className="bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600"></div>
               </div>
             ) : filteredClasses.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <i className="fas fa-chalkboard text-4xl mb-3 opacity-30"></i>
+              <div className="text-center py-6 text-gray-500">
+                <i className="fas fa-chalkboard text-2xl mb-2 opacity-30"></i>
                 <p className="text-sm">No classes found</p>
                 {classes.length === 0 && (
                   <button 
@@ -252,24 +260,27 @@ const CoursesPage = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                 {filteredClasses.map(cls => {
                   const classTasks = getClassTasks(cls.id);
                   return (
                     <div
                       key={cls.id}
-                      className="group flex flex-col items-center p-2 cursor-pointer relative"
+                      className="group flex items-center gap-3 px-3 py-2.5 bg-gray-50 hover:bg-blue-600 rounded-full border border-gray-100 hover:border-blue-600 cursor-pointer transition-all hover:shadow-md"
                       onClick={() => handleClassClick(cls)}
                     >
-                      <div className="w-12 h-12 flex items-center justify-center bg-gray-50 rounded-xl border border-gray-100 text-gray-600 text-lg group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 group-hover:-translate-y-1 group-hover:shadow-lg transition-all relative">
-                        <i className={`fas ${cls.icon || 'fa-chalkboard-teacher'}`}></i>
+                      {/* Icon */}
+                      <div className="w-9 h-9 flex items-center justify-center bg-white group-hover:bg-blue-500 rounded-full text-gray-600 group-hover:text-white transition-all relative flex-shrink-0">
+                        <i className={`fas ${cls.icon || 'fa-chalkboard-teacher'} text-sm`}></i>
                         {classTasks.length > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                             {classTasks.length}
                           </span>
                         )}
                       </div>
-                      <span className="mt-2 text-xs font-medium text-gray-700 text-center truncate w-full max-w-[70px]">
+                      
+                      {/* Class Name */}
+                      <span className="text-sm font-medium text-gray-700 group-hover:text-white truncate transition-colors">
                         {cls.name}
                       </span>
                     </div>
