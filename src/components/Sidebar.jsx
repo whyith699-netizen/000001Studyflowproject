@@ -18,8 +18,7 @@ const Sidebar = ({ user }) => {
   const navItems = [
     { path: '/dashboard', icon: 'fa-th-large', label: 'Dashboard' },
     { path: '/focus', icon: 'fa-clock', label: 'Focus Mode' },
-    { path: '/courses', icon: 'fa-chalkboard', label: 'Courses' },
-    { path: '/schedule', icon: 'fa-calendar-alt', label: 'Schedule' },
+    { path: '/schedule', icon: 'fa-calendar-alt', label: 'Jadwal' },
     { path: '/reports', icon: 'fa-chart-bar', label: 'Reports' },
     { path: '/settings', icon: 'fa-cog', label: 'Settings' },
   ];

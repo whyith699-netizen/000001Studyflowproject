@@ -416,11 +416,67 @@ async function updateStreak(userId) {
   }, { merge: true });
 }
 
+/**
+ * Uniforms Service - Custom uniform per day
+ */
+export const uniformsService = {
+  /**
+   * Get uniforms settings
+   */
+  async getUniforms() {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in');
+
+    const uniformsRef = doc(db, 'users', user.uid, 'settings', 'uniforms');
+    const snapshot = await getDoc(uniformsRef);
+    
+    if (snapshot.exists()) {
+      return snapshot.data().days || {};
+    }
+    return {};
+  },
+
+  /**
+   * Subscribe to uniforms updates
+   */
+  subscribeToUniforms(callback) {
+    const user = auth.currentUser;
+    if (!user) return () => {};
+
+    const uniformsRef = doc(db, 'users', user.uid, 'settings', 'uniforms');
+    
+    return onSnapshot(uniformsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        callback(snapshot.data().days || {});
+      } else {
+        callback({});
+      }
+    }, (error) => {
+      console.error('Uniforms subscription error:', error);
+    });
+  },
+
+  /**
+   * Save uniforms settings
+   */
+  async saveUniforms(uniformsData) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in');
+
+    const uniformsRef = doc(db, 'users', user.uid, 'settings', 'uniforms');
+    await setDoc(uniformsRef, {
+      days: uniformsData,
+      updatedAt: serverTimestamp()
+    });
+  }
+};
+
 export default {
   tasks: tasksService,
   classes: classesService,
   user: userService,
   exams: examsService,
-  studySessions: studySessionsService
+  studySessions: studySessionsService,
+  uniforms: uniformsService
 };
 
