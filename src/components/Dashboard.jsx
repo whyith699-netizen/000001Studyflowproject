@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase-config';
 import { tasksService, classesService, userService } from '../services/firestore-service';
+import { useDarkMode } from '../contexts/DarkModeContext';
 import Sidebar from './Sidebar';
 import Timer from './Timer';
 import WeeklyProgress from './WeeklyProgress';
@@ -8,6 +9,7 @@ import StudyGoals from './StudyGoals';
 
 const Dashboard = () => {
   const user = auth.currentUser;
+  const { isDarkMode } = useDarkMode();
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [classes, setClasses] = useState([]);
   const [streak, setStreak] = useState(0);
@@ -66,7 +68,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-slate-50 to-white">
+    <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-[#0f172a] to-[#1e293b]' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       {/* Sidebar */}
       <Sidebar user={user} />
 
@@ -74,15 +76,15 @@ const Dashboard = () => {
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
         <div className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-8 md:px-10 md:py-10 flex flex-col gap-6">
           {/* Header */}
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className={`rounded-xl p-4 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
             <div className="flex flex-wrap justify-between items-center gap-4">
               <div className="flex flex-col gap-1">
-                <h1 className="text-gray-900 text-2xl md:text-3xl font-bold leading-tight">
+                <h1 className={`text-2xl md:text-3xl font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Welcome Back, {user?.displayName?.split(' ')[0] || 'Student'}
                 </h1>
                 <div className="flex items-center gap-2">
                   <i className="fas fa-fire text-orange-500"></i>
-                  <p className="text-gray-500 text-sm">
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                     You're on a <span className="text-blue-600 font-bold">{streak}-day learning streak</span>! Keep it up.
                   </p>
                 </div>
@@ -132,9 +134,9 @@ const Dashboard = () => {
       {/* Add Task Modal - Enhanced like extension */}
       {showAddTaskModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+          <div className={`rounded-xl p-6 w-full max-w-md shadow-xl ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Add Task</h2>
+              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add Task</h2>
               <button 
                 onClick={() => setShowAddTaskModal(false)} 
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"

@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { tasksService, classesService } from '../services/firestore-service';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 // Task type configurations
 const TASK_TYPES = {
-  exam: { label: 'Exam', icon: 'fa-file-alt', color: 'text-red-600', bg: 'bg-red-50' },
-  individual: { label: 'Individual', icon: 'fa-user', color: 'text-blue-600', bg: 'bg-blue-50' },
-  group: { label: 'Group', icon: 'fa-users', color: 'text-green-600', bg: 'bg-green-50' },
-  other: { label: 'Other', icon: 'fa-sticky-note', color: 'text-gray-600', bg: 'bg-gray-50' }
+  exam: { label: 'Exam', icon: 'fa-file-alt', color: 'text-red-600', bg: 'bg-red-50', darkBg: 'bg-red-900/30' },
+  individual: { label: 'Individual', icon: 'fa-user', color: 'text-blue-600', bg: 'bg-blue-50', darkBg: 'bg-blue-900/30' },
+  group: { label: 'Group', icon: 'fa-users', color: 'text-green-600', bg: 'bg-green-50', darkBg: 'bg-green-900/30' },
+  other: { label: 'Other', icon: 'fa-sticky-note', color: 'text-gray-600', bg: 'bg-gray-50', darkBg: 'bg-gray-800' }
 };
 
 const StudyGoals = () => {
+  const { isDarkMode } = useDarkMode();
   const [tasks, setTasks] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,10 +60,10 @@ const StudyGoals = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm h-full">
-        <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+      <div className={`rounded-xl p-5 border shadow-sm h-full ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+        <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
           <i className="fas fa-tasks text-amber-500"></i>
-          <h2 className="text-sm font-semibold text-gray-900">My Tasks</h2>
+          <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>My Tasks</h2>
         </div>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600"></div>
@@ -71,16 +73,16 @@ const StudyGoals = () => {
   }
 
   return (
-    <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm h-full flex flex-col">
+    <div className={`rounded-xl p-5 border shadow-sm h-full flex flex-col ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
       {/* Header - No Add Button */}
-      <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-100">
+      <div className={`flex items-center justify-between mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">
           <i className="fas fa-tasks text-amber-500"></i>
-          <h2 className="text-sm font-semibold text-gray-900">My Tasks</h2>
+          <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>My Tasks</h2>
         </div>
         
         {/* Quick Stats Only */}
-        <div className="flex items-center gap-2 px-2.5 py-1 bg-gray-50 rounded-lg border border-gray-100">
+        <div className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-100'}`}>
           <span className="flex items-center gap-1 text-xs font-semibold text-red-600">
             <i className="fas fa-file-alt text-[10px]"></i>
             {taskCounts.exam}
@@ -99,7 +101,7 @@ const StudyGoals = () => {
       {/* Task List */}
       <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
         {tasks.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
+          <div className={`text-center py-8 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
             <i className="fas fa-clipboard-list text-3xl mb-2 opacity-40"></i>
             <p className="text-xs">No tasks yet</p>
           </div>
@@ -113,8 +115,10 @@ const StudyGoals = () => {
               <div
                 key={task.id}
                 className={`flex items-start gap-2.5 p-2.5 rounded-lg border-l-3 transition-all group ${
-                  task.completed ? 'bg-gray-50 opacity-60' : 'bg-white hover:bg-gray-50'
-                } ${priorityClass} border border-gray-100`}
+                  task.completed 
+                    ? isDarkMode ? 'bg-slate-800/50 opacity-60' : 'bg-gray-50 opacity-60'
+                    : isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-white hover:bg-gray-50'
+                } ${priorityClass} border ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}
               >
                 <div className="relative flex items-center pt-0.5">
                   <input
@@ -128,25 +132,27 @@ const StudyGoals = () => {
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${typeConfig.bg} ${typeConfig.color}`}>
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${isDarkMode ? typeConfig.darkBg : typeConfig.bg} ${typeConfig.color}`}>
                       <i className={`fas ${typeConfig.icon}`}></i>
                       {typeConfig.label}
                     </span>
                     {task.className && (
-                      <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDarkMode ? 'text-slate-400 bg-slate-700' : 'text-gray-500 bg-gray-100'}`}>
                         {task.className}
                       </span>
                     )}
                   </div>
                   
                   <span className={`text-sm font-medium block truncate ${
-                    task.completed ? 'line-through text-gray-400' : 'text-gray-800'
+                    task.completed 
+                      ? isDarkMode ? 'line-through text-slate-500' : 'line-through text-gray-400'
+                      : isDarkMode ? 'text-white' : 'text-gray-800'
                   }`}>
                     {task.text || 'Untitled Task'}
                   </span>
                   
                   {task.dueDate && (
-                    <span className="text-[10px] text-gray-400">
+                    <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                       Due: {new Date(task.dueDate).toLocaleDateString()}
                     </span>
                   )}
@@ -165,7 +171,7 @@ const StudyGoals = () => {
       </div>
       
       {tasks.length > 10 && (
-        <button className="w-full mt-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+        <button className={`w-full mt-3 py-2 text-xs font-semibold rounded-lg transition-colors ${isDarkMode ? 'text-blue-400 hover:bg-slate-700' : 'text-blue-600 hover:bg-blue-50'}`}>
           View All {tasks.length} Tasks
         </button>
       )}

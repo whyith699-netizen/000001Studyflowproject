@@ -3,11 +3,13 @@ import { auth } from '../firebase-config';
 import { userService } from '../services/firestore-service';
 import { signOut, updateProfile } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
+import { useDarkMode } from '../contexts/DarkModeContext';
 import Sidebar from './Sidebar';
 
 const SettingsPage = () => {
   const user = auth.currentUser;
   const navigate = useNavigate();
+  const { isDarkMode } = useDarkMode();
   const [settings, setSettings] = useState({
     displayName: user?.displayName || '',
     pomodoroMinutes: 25,
@@ -85,15 +87,15 @@ const SettingsPage = () => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-br from-slate-50 to-white">
+    <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-[#0f172a] to-[#1e293b]' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       <Sidebar user={user} />
       
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
         <div className="flex-1 max-w-[800px] w-full mx-auto px-6 py-8 md:px-10 md:py-10 flex flex-col gap-6">
           {/* Header */}
-          <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-            <h1 className="text-gray-900 text-2xl font-bold">Settings</h1>
-            <p className="text-gray-500 text-sm mt-1">Customize your Study Flow experience</p>
+          <div className={`rounded-xl p-4 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+            <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+            <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Customize your Study Flow experience</p>
           </div>
 
           {/* Success/Error Message */}
@@ -111,40 +113,40 @@ const SettingsPage = () => {
           )}
 
           {/* Profile Section */}
-          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
               <i className="fas fa-user text-blue-600"></i>
-              <h2 className="text-sm font-semibold text-gray-900">Profile</h2>
+              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Profile</h2>
             </div>
             <div className="flex items-center gap-5 mb-5">
               <div className="w-16 h-16 rounded-xl bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">
                 {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </div>
               <div>
-                <p className="text-lg font-semibold text-gray-800">{user?.displayName || 'User'}</p>
-                <p className="text-gray-500 text-sm">{user?.email}</p>
+                <p className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{user?.displayName || 'User'}</p>
+                <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{user?.email}</p>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Display Name</label>
+              <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Display Name</label>
               <input
                 type="text"
                 value={settings.displayName}
                 onChange={(e) => setSettings({ ...settings, displayName: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:border-blue-500 focus:outline-none transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-white focus:bg-slate-700' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
               />
             </div>
           </div>
 
           {/* Timer Settings */}
-          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
               <i className="fas fa-stopwatch text-red-500"></i>
-              <h2 className="text-sm font-semibold text-gray-900">Timer Settings</h2>
+              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Timer Settings</h2>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-5">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Pomodoro</label>
+                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Pomodoro</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -152,13 +154,13 @@ const SettingsPage = () => {
                     max="120"
                     value={settings.pomodoroMinutes}
                     onChange={(e) => setSettings({ ...settings, pomodoroMinutes: parseInt(e.target.value) || 25 })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                    className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:border-blue-500 focus:outline-none transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-white focus:bg-slate-700' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">min</span>
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>min</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Short Break</label>
+                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Short Break</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -166,13 +168,13 @@ const SettingsPage = () => {
                     max="30"
                     value={settings.shortBreakMinutes}
                     onChange={(e) => setSettings({ ...settings, shortBreakMinutes: parseInt(e.target.value) || 5 })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                    className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:border-blue-500 focus:outline-none transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-white focus:bg-slate-700' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">min</span>
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>min</span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Long Break</label>
+                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Long Break</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -180,19 +182,19 @@ const SettingsPage = () => {
                     max="60"
                     value={settings.longBreakMinutes}
                     onChange={(e) => setSettings({ ...settings, longBreakMinutes: parseInt(e.target.value) || 15 })}
-                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:bg-white focus:border-blue-500 focus:outline-none transition-all"
+                    className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:border-blue-500 focus:outline-none transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-white focus:bg-slate-700' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">min</span>
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>min</span>
                 </div>
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <label className="flex items-center justify-between cursor-pointer p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <span className="text-gray-700 text-sm">Auto-start breaks</span>
+              <label className={`flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Auto-start breaks</span>
                 <div 
                   onClick={() => setSettings({ ...settings, autoStartBreaks: !settings.autoStartBreaks })}
                   className={`relative w-10 h-5 rounded-full transition-colors ${
-                    settings.autoStartBreaks ? 'bg-blue-600' : 'bg-gray-300'
+                    settings.autoStartBreaks ? 'bg-blue-600' : isDarkMode ? 'bg-slate-600' : 'bg-gray-300'
                   }`}
                 >
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -200,12 +202,12 @@ const SettingsPage = () => {
                   }`} />
                 </div>
               </label>
-              <label className="flex items-center justify-between cursor-pointer p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <span className="text-gray-700 text-sm">Sound notifications</span>
+              <label className={`flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
+                <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Sound notifications</span>
                 <div 
                   onClick={() => setSettings({ ...settings, soundEnabled: !settings.soundEnabled })}
                   className={`relative w-10 h-5 rounded-full transition-colors ${
-                    settings.soundEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                    settings.soundEnabled ? 'bg-blue-600' : isDarkMode ? 'bg-slate-600' : 'bg-gray-300'
                   }`}
                 >
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -236,22 +238,22 @@ const SettingsPage = () => {
           </button>
 
           {/* Danger Zone */}
-          <div className="bg-white rounded-xl p-5 border border-red-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-red-100">
+          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-red-900/50' : 'bg-white border-red-100'}`}>
+            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-red-900/50' : 'border-red-100'}`}>
               <i className="fas fa-exclamation-triangle text-red-500"></i>
               <h2 className="text-sm font-semibold text-red-600">Danger Zone</h2>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={handleLogout}
-                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                className={`flex-1 px-4 py-2.5 border rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
               >
                 <i className="fas fa-sign-out-alt"></i>
                 Sign Out
               </button>
               <button
                 onClick={handleDeleteAccount}
-                className="flex-1 px-4 py-2.5 border border-red-200 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                className={`flex-1 px-4 py-2.5 border border-red-200 rounded-lg font-medium text-red-600 transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}
               >
                 <i className="fas fa-trash-alt"></i>
                 Delete Account
