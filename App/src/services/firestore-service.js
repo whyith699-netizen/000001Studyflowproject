@@ -268,10 +268,18 @@ export const userService = {
     if (!user) throw new Error('Must be logged in');
 
     const userRef = doc(db, 'users', user.uid);
-    await setDoc(userRef, {
+    const snapshot = await getDoc(userRef);
+    const payload = {
       ...updates,
-      lastSync: serverTimestamp()
-    }, { merge: true });
+      lastSync: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    if (!snapshot.exists()) {
+      payload.createdAt = serverTimestamp();
+    }
+
+    await setDoc(userRef, payload, { merge: true });
   }
 };
 

@@ -1,5 +1,12 @@
-node_modules
-dist
-.env
-.env.local
-*.log
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/app/build
+/build
+/app/google-services.json

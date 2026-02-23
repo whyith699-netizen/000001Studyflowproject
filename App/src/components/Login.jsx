@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase-config';
+import { userService } from '../services/firestore-service';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
@@ -32,7 +33,20 @@ const Login = () => {
       provider.setCustomParameters({
         prompt: 'select_account'
       });
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      const fallbackDisplayName = firebaseUser.email?.split('@')[0] || 'StudyFlow User';
+
+      try {
+        await userService.updateProfile({
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || fallbackDisplayName,
+          photoURL: firebaseUser.photoURL || null,
+          lastLogin: new Date().toISOString()
+        });
+      } catch (profileError) {
+        console.error('Profile sync failed after login:', profileError);
+      }
       // Navigation will be handled by onAuthStateChanged
     } catch (err) {
       console.error("Login failed:", err);

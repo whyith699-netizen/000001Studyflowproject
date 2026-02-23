@@ -27,8 +27,12 @@ const SettingsPage = () => {
     const loadSettings = async () => {
       try {
         const profile = await userService.getProfile();
-        if (profile?.settings) {
-          setSettings(prev => ({ ...prev, ...profile.settings }));
+        if (profile) {
+          setSettings(prev => ({
+            ...prev,
+            displayName: profile.displayName || prev.displayName,
+            ...(profile.settings || {})
+          }));
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -42,11 +46,20 @@ const SettingsPage = () => {
     setMessage('');
     
     try {
-      if (settings.displayName !== user?.displayName) {
-        await updateProfile(auth.currentUser, { displayName: settings.displayName });
+      const normalizedDisplayName = settings.displayName.trim();
+      if (!normalizedDisplayName) {
+        setMessage('Display name is required.');
+        return;
+      }
+
+      if (normalizedDisplayName !== user?.displayName) {
+        await updateProfile(auth.currentUser, { displayName: normalizedDisplayName });
       }
 
       await userService.updateProfile({
+        email: user?.email || '',
+        displayName: normalizedDisplayName,
+        photoURL: user?.photoURL || null,
         settings: {
           pomodoroMinutes: settings.pomodoroMinutes,
           shortBreakMinutes: settings.shortBreakMinutes,
