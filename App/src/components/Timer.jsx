@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { tasksService, studySessionsService, userService } from '../services/firestore-service';
+import { tasksService, studySessionsService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useLang } from '../contexts/LanguageContext';
 
 const Timer = ({ mode = 'compact', onTimeUpdate }) => {
   const { isDarkMode } = useDarkMode();
+  const { t } = useLang();
   const [timerMode, setTimerMode] = useState('pomodoro'); // pomodoro, shortBreak, longBreak
-  // ... existing state ...
   const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -32,7 +33,6 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
     setTimeLeft(timerModes[newMode].time);
     setIsRunning(false);
     setSessionStartTime(null);
-    userService.setFocusMode(false); // Disable focus mode on switch
   }, []);
 
   // Save session when timer completes
@@ -59,7 +59,6 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
         setTimeLeft(time => {
           if (time <= 1) {
             setIsRunning(false);
-            userService.setFocusMode(false); // Disable focus mode on completion
             // Save completed session
             saveSession();
             // Play notification sound or show alert
@@ -88,18 +87,8 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
   const formatTime = (num) => num.toString().padStart(2, '0');
 
   const toggleTimer = () => {
-    if (!isRunning) {
-      // Starting
-      if (!sessionStartTime) {
-        setSessionStartTime(Date.now());
-      }
-      // Only enable focus mode for Pomodoro sessions
-      if (timerMode === 'pomodoro') {
-        userService.setFocusMode(true);
-      }
-    } else {
-      // Pausing
-      userService.setFocusMode(false);
+    if (!isRunning && !sessionStartTime) {
+      setSessionStartTime(Date.now());
     }
     setIsRunning(!isRunning);
   };
@@ -108,7 +97,6 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
     setTimeLeft(timerModes[timerMode].time);
     setIsRunning(false);
     setSessionStartTime(null);
-    userService.setFocusMode(false);
   };
 
   const handleSelectTask = (task) => {
@@ -193,15 +181,15 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
   // Compact Dashboard Layout
   return (
     <>
-      <div className={`rounded-2xl p-6 shadow-sm border ${isDarkMode ? 'bg-[#1A2633] border-gray-800' : 'bg-white border-gray-100'}`}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Current Focus</h2>
-          <span className={`px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wide ${isDarkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'}`}>
+      <div className={`rounded-2xl p-4 shadow-sm border ${isDarkMode ? 'bg-[#1A2633] border-gray-800' : 'bg-white border-gray-100'}`}>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('currentFocus')}</h2>
+          <span className={`px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wide ${isDarkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
             {timerModes[timerMode].label}
           </span>
         </div>
         
-        <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex-1 w-full">
             <div className="flex gap-4">
               {/* Hours */}
@@ -259,7 +247,7 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
           </div>
         </div>
         
-        <div className={`mt-6 pt-6 border-t flex items-center justify-between text-sm ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
+        <div className={`mt-3 pt-3 border-t flex items-center justify-between text-sm ${isDarkMode ? 'border-gray-800' : 'border-gray-100'}`}>
           <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>
             Task: <strong className={`ml-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedTask?.text || 'No task selected'}</strong>
           </span>

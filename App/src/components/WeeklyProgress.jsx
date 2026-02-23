@@ -52,8 +52,8 @@ const WeeklyProgress = () => {
 
   if (loading) {
     return (
-      <div className={`rounded-xl p-5 border shadow-sm flex-1 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-        <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+      <div className={`rounded-xl p-3 border shadow-sm flex-1 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+        <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
           <i className="fas fa-chart-line text-blue-600"></i>
           <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Weekly Progress</h2>
         </div>
@@ -65,8 +65,8 @@ const WeeklyProgress = () => {
   }
 
   return (
-    <div className={`rounded-xl p-5 border shadow-sm flex-1 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-      <div className={`flex items-center justify-between mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+    <div className={`rounded-xl p-3 border shadow-sm flex-1 h-full flex flex-col ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+      <div className={`flex items-center justify-between mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">
           <i className="fas fa-chart-line text-blue-600"></i>
           <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Weekly Progress</h2>
@@ -77,7 +77,7 @@ const WeeklyProgress = () => {
         </div>
       </div>
       
-      <div className="h-40 flex items-end justify-between gap-3 px-2">
+      <div className="flex-1 min-h-[120px] flex items-end justify-between gap-3 px-2">
         {dailyData.map((day) => (
           <div key={day.name} className="flex flex-col items-center gap-2 group flex-1">
             <div className={`w-full rounded-lg relative h-full flex items-end overflow-hidden border transition-colors ${

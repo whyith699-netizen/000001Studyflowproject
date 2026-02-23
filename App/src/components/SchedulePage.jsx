@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase-config';
-import { classesService, tasksService, examsService, uniformsService } from '../services/firestore-service';
+import { classesService, tasksService, uniformsService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useLang } from '../contexts/LanguageContext';
 import Sidebar from './Sidebar';
 
 // Font Awesome icon options for classes
@@ -24,15 +25,6 @@ const CLASS_ICONS = [
   { icon: 'fa-cross', label: 'Religion' },
 ];
 
-const DAYS = [
-  { value: 'monday', label: 'Senin', short: 'Sen' },
-  { value: 'tuesday', label: 'Selasa', short: 'Sel' },
-  { value: 'wednesday', label: 'Rabu', short: 'Rab' },
-  { value: 'thursday', label: 'Kamis', short: 'Kam' },
-  { value: 'friday', label: 'Jumat', short: 'Jum' },
-  { value: 'saturday', label: 'Sabtu', short: 'Sab' },
-];
-
 const UNIFORM_PRESETS = [
   { name: 'Putih Abu-abu', color: '#6B7280' },
   { name: 'Batik', color: '#92400E' },
@@ -42,11 +34,30 @@ const UNIFORM_PRESETS = [
   { name: 'Jas Almamater', color: '#1E40AF' },
 ];
 
+// Resolve class icon - handles both 'fa-book' and 'book' formats (Extension compatibility)
+const getClassIcon = (cls) => {
+  const icon = cls.icon;
+  if (!icon) return 'fa-graduation-cap';
+  if (icon.startsWith('fa-')) return icon;
+  return `fa-${icon}`;
+};
+
 const SchedulePage = () => {
   const user = auth.currentUser;
   const { isDarkMode } = useDarkMode();
+  const { t } = useLang();
   const [activeTab, setActiveTab] = useState('classes');
   
+  // Days definition using translation keys
+  const DAYS = [
+    { value: 'monday', labelKey: 'monday', shortKey: 'senin' },
+    { value: 'tuesday', labelKey: 'tuesday', shortKey: 'selasa' },
+    { value: 'wednesday', labelKey: 'wednesday', shortKey: 'rabu' },
+    { value: 'thursday', labelKey: 'thursday', shortKey: 'kamis' },
+    { value: 'friday', labelKey: 'friday', shortKey: 'jumat' },
+    { value: 'saturday', labelKey: 'saturday', shortKey: 'sabtu' },
+  ];
+
   // Classes state
   const [classes, setClasses] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -61,10 +72,7 @@ const SchedulePage = () => {
     links: [{ title: '', url: '' }]
   });
   
-  // Exams state
-  const [exams, setExams] = useState([]);
-  const [showAddExamModal, setShowAddExamModal] = useState(false);
-  const [examFormData, setExamFormData] = useState({ title: '', subject: '', date: '', time: '' });
+
   
   // Uniforms state
   const [uniforms, setUniforms] = useState({});
@@ -84,10 +92,7 @@ const SchedulePage = () => {
       setTasks(data);
     });
     
-    const unsubExams = examsService.subscribeToExams((data) => {
-      setExams(data.sort((a, b) => new Date(a.date) - new Date(b.date)));
-    });
-    
+
     const unsubUniforms = uniformsService.subscribeToUniforms((data) => {
       setUniforms(data);
     });
@@ -95,7 +100,7 @@ const SchedulePage = () => {
     return () => {
       unsubClasses();
       unsubTasks();
-      unsubExams();
+
       unsubUniforms();
     };
   }, []);
@@ -103,21 +108,7 @@ const SchedulePage = () => {
   // Helper functions
   const getClassTasks = (classId) => tasks.filter(t => t.classId === classId && !t.completed);
   
-  const getDaysUntil = (dateStr) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const examDate = new Date(dateStr);
-    examDate.setHours(0, 0, 0, 0);
-    return Math.ceil((examDate - today) / (1000 * 60 * 60 * 24));
-  };
 
-  const getUrgencyColor = (days) => {
-    if (days < 0) return 'bg-gray-100 text-gray-500';
-    if (days === 0) return 'bg-red-100 text-red-600';
-    if (days <= 3) return 'bg-orange-100 text-orange-600';
-    if (days <= 7) return 'bg-yellow-100 text-yellow-600';
-    return 'bg-green-100 text-green-600';
-  };
 
   // Classes handlers
   const handleAddClass = async (e) => {
@@ -141,7 +132,7 @@ const SchedulePage = () => {
   };
 
   const handleDeleteClass = async (classId) => {
-    if (!confirm('Hapus kelas ini?')) return;
+    if (!confirm(t('deleteConfirmClass'))) return;
     try {
       await classesService.deleteClass(classId);
       setShowClassDetailModal(false);
@@ -163,30 +154,7 @@ const SchedulePage = () => {
     }));
   };
 
-  // Exams handlers
-  const handleAddExam = async (e) => {
-    e.preventDefault();
-    if (!examFormData.title.trim() || !examFormData.date) return;
-    setIsSubmitting(true);
-    try {
-      await examsService.addExam(examFormData);
-      setExamFormData({ title: '', subject: '', date: '', time: '' });
-      setShowAddExamModal(false);
-    } catch (error) {
-      console.error('Failed to add exam:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
-  const handleDeleteExam = async (examId) => {
-    if (!confirm('Hapus ujian ini?')) return;
-    try {
-      await examsService.deleteExam(examId);
-    } catch (error) {
-      console.error('Failed to delete exam:', error);
-    }
-  };
 
   // Uniforms handlers
   const handleSaveUniform = async (day) => {
@@ -210,25 +178,23 @@ const SchedulePage = () => {
     }
   };
 
-  const upcomingExams = exams.filter(e => getDaysUntil(e.date) >= 0);
-  const pastExams = exams.filter(e => getDaysUntil(e.date) < 0);
 
   return (
     <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'bg-gradient-to-br from-[#0f172a] to-[#1e293b]' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       <Sidebar user={user} />
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="flex-1 max-w-[1200px] w-full mx-auto px-4 py-4 md:px-6 md:py-5">
+        <div className="flex-1 w-full px-4 py-4 md:px-6 md:py-5">
           {/* Header with Tabs */}
-          <div className={`rounded-xl p-4 border shadow-sm mb-4 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-            <div className="flex items-center justify-between mb-4">
+          <div className={`rounded-xl p-3 border shadow-sm mb-3 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 flex items-center justify-center bg-blue-50 rounded-xl">
                   <i className="fas fa-calendar-alt text-blue-600 text-lg"></i>
                 </div>
                 <div>
-                <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Jadwal</h1>
-                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Kelola kelas, ujian, dan seragam</p>
+                <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('scheduleTitle')}</h1>
+                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('scheduleSubtitle')}</p>
                 </div>
               </div>
               
@@ -239,26 +205,17 @@ const SchedulePage = () => {
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
                 >
                   <i className="fas fa-plus"></i>
-                  Tambah Kelas
+                  {t('addClass')}
                 </button>
               )}
-              {activeTab === 'exams' && (
-                <button
-                  onClick={() => setShowAddExamModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
-                >
-                  <i className="fas fa-plus"></i>
-                  Tambah Ujian
-                </button>
-              )}
+
             </div>
 
             {/* Tabs */}
             <div className={`flex gap-1 p-1 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
               {[
-                { id: 'classes', label: 'Kelas', icon: 'fa-chalkboard' },
-                { id: 'exams', label: 'Ujian', icon: 'fa-file-alt' },
-                { id: 'uniforms', label: 'Seragam', icon: 'fa-tshirt' }
+                { id: 'classes', labelKey: 'classesTab', icon: 'fa-chalkboard' },
+                { id: 'uniforms', labelKey: 'uniformsTab', icon: 'fa-tshirt' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -270,14 +227,14 @@ const SchedulePage = () => {
                   }`}
                 >
                   <i className={`fas ${tab.icon}`}></i>
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Tab Content */}
-          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
@@ -290,9 +247,9 @@ const SchedulePage = () => {
                     {classes.length === 0 ? (
                       <div className={`text-center py-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                         <i className="fas fa-chalkboard text-4xl mb-3 opacity-30"></i>
-                        <p className="text-sm">Belum ada kelas</p>
+                        <p className="text-sm">{t('noClassesYet')}</p>
                         <button onClick={() => setShowAddClassModal(true)} className="mt-3 text-blue-600 text-sm font-medium hover:underline">
-                          Tambah kelas pertama
+                          {t('addFirstClass')}
                         </button>
                       </div>
                     ) : (
@@ -306,7 +263,7 @@ const SchedulePage = () => {
                               onClick={() => { setSelectedClass(cls); setShowClassDetailModal(true); }}
                             >
                               <div className={`w-10 h-10 flex items-center justify-center rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-all relative flex-shrink-0 ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-white text-gray-600'}`}>
-                                <i className={`fas ${cls.icon || 'fa-chalkboard-teacher'}`}></i>
+                                <i className={`fas ${getClassIcon(cls)}`}></i>
                                 {classTasks.length > 0 && (
                                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                                     {classTasks.length}
@@ -319,7 +276,7 @@ const SchedulePage = () => {
                                 </span>
                                 {cls.days?.length > 0 && (
                                   <span className={`text-xs group-hover:text-blue-200 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>
-                                    {cls.days.map(d => DAYS.find(day => day.value === d)?.short).join(', ')}
+                                    {cls.days.map(d => t(DAYS.find(day => day.value === d)?.shortKey || d)).join(', ')}
                                   </span>
                                 )}
                               </div>
@@ -337,9 +294,9 @@ const SchedulePage = () => {
                     {upcomingExams.length === 0 && pastExams.length === 0 ? (
                       <div className={`text-center py-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                         <i className="fas fa-file-alt text-4xl mb-3 opacity-30"></i>
-                        <p className="text-sm">Belum ada ujian</p>
+                        <p className="text-sm">{t('noExamsYet')}</p>
                         <button onClick={() => setShowAddExamModal(true)} className="mt-3 text-blue-600 text-sm font-medium hover:underline">
-                          Tambah ujian pertama
+                          {t('addFirstExam')}
                         </button>
                       </div>
                     ) : (
@@ -347,7 +304,7 @@ const SchedulePage = () => {
                         {/* Upcoming */}
                         {upcomingExams.length > 0 && (
                           <div>
-                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-3 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Akan Datang</h3>
+                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-3 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('upcoming')}</h3>
                             <div className="space-y-2">
                               {upcomingExams.map(exam => {
                                 const days = getDaysUntil(exam.date);
@@ -366,7 +323,7 @@ const SchedulePage = () => {
                                       <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>{exam.subject} {exam.time && `• ${exam.time}`}</p>
                                     </div>
                                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getUrgencyColor(days)}`}>
-                                      {days === 0 ? 'Hari ini' : days === 1 ? 'Besok' : `${days} hari`}
+                                      {days === 0 ? t('today') : days === 1 ? t('tomorrow') : t('nDays', { n: days })}
                                     </span>
                                     <button
                                       onClick={() => handleDeleteExam(exam.id)}
@@ -384,7 +341,7 @@ const SchedulePage = () => {
                         {/* Past */}
                         {pastExams.length > 0 && (
                           <div>
-                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-3 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Sudah Lewat</h3>
+                            <h3 className={`text-xs font-semibold uppercase tracking-wide mb-3 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('passed')}</h3>
                             <div className="space-y-2 opacity-60">
                               {pastExams.slice(0, 5).map(exam => (
                                 <div key={exam.id} className={`flex items-center gap-4 p-3 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
@@ -408,12 +365,12 @@ const SchedulePage = () => {
                 {/* Uniforms Tab */}
                 {activeTab === 'uniforms' && (
                   <div>
-                    <p className={`text-sm mb-4 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Atur seragam untuk setiap hari sekolah</p>
+                    <p className={`text-sm mb-4 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('uniformDescription')}</p>
                     <div className="space-y-3">
                       {DAYS.map(day => (
-                        <div key={day.value} className={`flex items-center gap-4 p-4 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
+                        <div key={day.value} className={`flex items-center gap-3 p-3 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                           <div className="w-16 text-center">
-                            <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>{day.label}</span>
+                            <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>{t(day.labelKey)}</span>
                           </div>
                           
                           {editingDay === day.value ? (
@@ -422,7 +379,7 @@ const SchedulePage = () => {
                                 type="text"
                                 value={uniformInput}
                                 onChange={(e) => setUniformInput(e.target.value)}
-                                placeholder="Nama seragam..."
+                                placeholder={t('uniformPlaceholder')}
                                 className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:border-blue-500 focus:outline-none ${isDarkMode ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-200'}`}
                                 autoFocus
                               />
@@ -430,13 +387,13 @@ const SchedulePage = () => {
                                 onClick={() => handleSaveUniform(day.value)}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
                               >
-                                Simpan
+                                {t('save')}
                               </button>
                               <button
                                 onClick={() => { setEditingDay(null); setUniformInput(''); }}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium ${isDarkMode ? 'bg-slate-600 text-slate-300 hover:bg-slate-500' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
                               >
-                                Batal
+                                {t('cancel')}
                               </button>
                             </div>
                           ) : (
@@ -448,7 +405,7 @@ const SchedulePage = () => {
                                     {uniforms[day.value]}
                                   </span>
                                 ) : (
-                                  <span className={`text-sm italic ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Belum diatur</span>
+                                  <span className={`text-sm italic ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('notSetYet')}</span>
                                 )}
                               </div>
                               
@@ -488,7 +445,7 @@ const SchedulePage = () => {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-5">
-              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Tambah Kelas</h2>
+              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('addClass')}</h2>
               <button onClick={() => { setShowAddClassModal(false); resetClassForm(); }} className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
                 <i className={`fas fa-times ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}></i>
               </button>
@@ -496,7 +453,7 @@ const SchedulePage = () => {
 
             <form onSubmit={handleAddClass} className="space-y-4">
               <div>
-                <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Nama Kelas</label>
+                <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('addClassName')}</label>
                 <div className="flex gap-2">
                   <div className="relative">
                     <button
@@ -528,7 +485,7 @@ const SchedulePage = () => {
                     type="text"
                     value={classFormData.name}
                     onChange={(e) => setClassFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Contoh: Matematika"
+                    placeholder={t('exampleMath')}
                     className={`flex-1 px-4 py-2.5 border rounded-lg text-sm focus:border-blue-500 focus:outline-none ${isDarkMode ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
                     required
                   />
@@ -536,7 +493,7 @@ const SchedulePage = () => {
               </div>
 
               <div>
-                <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Hari</label>
+                <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('dayLabel')}</label>
                 <div className="flex gap-2 flex-wrap">
                   {DAYS.map(day => (
                     <button
@@ -549,7 +506,7 @@ const SchedulePage = () => {
                           : isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      {day.short}
+                      {t(day.shortKey)}
                     </button>
                   ))}
                 </div>
@@ -560,81 +517,14 @@ const SchedulePage = () => {
                 disabled={isSubmitting || !classFormData.name.trim()}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium"
               >
-                {isSubmitting ? 'Menyimpan...' : 'Tambah Kelas'}
+                {isSubmitting ? t('saving') : t('addClass')}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Add Exam Modal */}
-      {showAddExamModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl p-6 w-full max-w-md shadow-xl ${isDarkMode ? 'bg-[#1e293b]' : 'bg-white'}`}>
-            <div className="flex justify-between items-center mb-5">
-              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Tambah Ujian</h2>
-              <button onClick={() => setShowAddExamModal(false)} className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
-                <i className={`fas fa-times ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}></i>
-              </button>
-            </div>
 
-            <form onSubmit={handleAddExam} className="space-y-4">
-              <div>
-                <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Nama Ujian</label>
-                <input
-                  type="text"
-                  value={examFormData.title}
-                  onChange={(e) => setExamFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Contoh: UTS Matematika"
-                  className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:border-blue-500 focus:outline-none ${isDarkMode ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Mata Pelajaran</label>
-                <input
-                  type="text"
-                  value={examFormData.subject}
-                  onChange={(e) => setExamFormData(prev => ({ ...prev, subject: e.target.value }))}
-                  placeholder="Contoh: Matematika"
-                  className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:border-blue-500 focus:outline-none ${isDarkMode ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Tanggal</label>
-                  <input
-                    type="date"
-                    value={examFormData.date}
-                    onChange={(e) => setExamFormData(prev => ({ ...prev, date: e.target.value }))}
-                    className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:border-blue-500 focus:outline-none ${isDarkMode ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className={`block text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Waktu</label>
-                  <input
-                    type="time"
-                    value={examFormData.time}
-                    onChange={(e) => setExamFormData(prev => ({ ...prev, time: e.target.value }))}
-                    className={`w-full px-4 py-2.5 border rounded-lg text-sm focus:border-blue-500 focus:outline-none ${isDarkMode ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting || !examFormData.title.trim() || !examFormData.date}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium"
-              >
-                {isSubmitting ? 'Menyimpan...' : 'Tambah Ujian'}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Class Detail Modal */}
       {showClassDetailModal && selectedClass && (
@@ -649,8 +539,8 @@ const SchedulePage = () => {
                   <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedClass.name}</h2>
                   <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                     {selectedClass.days?.length > 0 
-                      ? selectedClass.days.map(d => DAYS.find(day => day.value === d)?.label).join(', ')
-                      : 'Belum ada jadwal'}
+                      ? selectedClass.days.map(d => t(DAYS.find(day => day.value === d)?.labelKey || d)).join(', ')
+                      : t('noScheduleYet')}
                   </p>
                 </div>
               </div>
@@ -662,7 +552,7 @@ const SchedulePage = () => {
             {/* Links */}
             {selectedClass.links?.filter(l => l.url).length > 0 && (
               <div className="mb-5">
-                <h3 className={`text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Link</h3>
+                <h3 className={`text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('link')}</h3>
                 <div className="space-y-2">
                   {selectedClass.links.filter(l => l.url).map((link, i) => (
                     <button key={i} onClick={() => window.open(link.url, '_blank')} className={`w-full flex items-center gap-3 p-3 rounded-lg text-left group ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-50 hover:bg-blue-50'}`}>
@@ -676,9 +566,9 @@ const SchedulePage = () => {
 
             {/* Tasks */}
             <div className="mb-5">
-              <h3 className={`text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Tugas ({getClassTasks(selectedClass.id).length})</h3>
+              <h3 className={`text-xs font-medium uppercase mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('tasks')} ({getClassTasks(selectedClass.id).length})</h3>
               {getClassTasks(selectedClass.id).length === 0 ? (
-                <p className={`text-sm text-center py-4 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Tidak ada tugas</p>
+                <p className={`text-sm text-center py-4 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('noTasks')}</p>
               ) : (
                 <div className="space-y-2">
                   {getClassTasks(selectedClass.id).map(task => (
@@ -686,7 +576,7 @@ const SchedulePage = () => {
                       <div className={`p-1.5 rounded ${isDarkMode ? 'bg-blue-900/50 text-blue-400' : 'bg-blue-100 text-blue-600'}`}><i className="fas fa-tasks text-xs"></i></div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{task.text}</p>
-                        {task.dueDate && <p className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Due: {new Date(task.dueDate).toLocaleDateString('id-ID')}</p>}
+                        {task.dueDate && <p className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('dueDate')}: {new Date(task.dueDate).toLocaleDateString('id-ID')}</p>}
                       </div>
                     </div>
                   ))}
@@ -696,10 +586,10 @@ const SchedulePage = () => {
 
             <div className="flex gap-3">
               <button onClick={() => handleDeleteClass(selectedClass.id)} className={`flex-1 px-4 py-2.5 border border-red-200 rounded-lg font-medium text-red-600 flex items-center justify-center gap-2 ${isDarkMode ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}>
-                <i className="fas fa-trash-alt"></i> Hapus
+                <i className="fas fa-trash-alt"></i> {t('delete')}
               </button>
               <button onClick={() => { setShowClassDetailModal(false); setSelectedClass(null); }} className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
-                Tutup
+                {t('close')}
               </button>
             </div>
           </div>

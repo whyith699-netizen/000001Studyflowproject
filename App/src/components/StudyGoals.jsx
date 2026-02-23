@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { tasksService, classesService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useLang } from '../contexts/LanguageContext';
 
 // Task type configurations
 const TASK_TYPES = {
-  exam: { label: 'Exam', icon: 'fa-file-alt', color: 'text-red-600', bg: 'bg-red-50', darkBg: 'bg-red-900/30' },
-  individual: { label: 'Individual', icon: 'fa-user', color: 'text-blue-600', bg: 'bg-blue-50', darkBg: 'bg-blue-900/30' },
-  group: { label: 'Group', icon: 'fa-users', color: 'text-green-600', bg: 'bg-green-50', darkBg: 'bg-green-900/30' },
-  other: { label: 'Other', icon: 'fa-sticky-note', color: 'text-gray-600', bg: 'bg-gray-50', darkBg: 'bg-gray-800' }
+  exam: { label: 'Exam', icon: 'fa-file-alt', color: 'text-blue-500', bg: 'bg-blue-50', darkBg: 'bg-blue-900/20' },
+  individual: { label: 'Individual', icon: 'fa-user', color: 'text-blue-500', bg: 'bg-blue-50', darkBg: 'bg-blue-900/20' },
+  group: { label: 'Group', icon: 'fa-users', color: 'text-blue-500', bg: 'bg-blue-50', darkBg: 'bg-blue-900/20' },
+  other: { label: 'Other', icon: 'fa-sticky-note', color: 'text-gray-500', bg: 'bg-gray-50', darkBg: 'bg-gray-800' }
 };
 
 const StudyGoals = () => {
   const { isDarkMode } = useDarkMode();
+  const { t } = useLang();
   const [tasks, setTasks] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,10 +62,10 @@ const StudyGoals = () => {
 
   if (loading) {
     return (
-      <div className={`rounded-xl p-5 border shadow-sm h-full ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-        <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
-          <i className="fas fa-tasks text-amber-500"></i>
-          <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>My Tasks</h2>
+      <div className={`rounded-xl p-3 border shadow-sm h-full ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+        <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+          <i className="fas fa-tasks text-blue-500"></i>
+          <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('myTasks')}</h2>
         </div>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-600"></div>
@@ -73,25 +75,25 @@ const StudyGoals = () => {
   }
 
   return (
-    <div className={`rounded-xl p-5 border shadow-sm h-full flex flex-col ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+    <div className={`rounded-xl p-3 border shadow-sm h-full flex flex-col ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
       {/* Header - No Add Button */}
-      <div className={`flex items-center justify-between mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+      <div className={`flex items-center justify-between mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">
-          <i className="fas fa-tasks text-amber-500"></i>
-          <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>My Tasks</h2>
+          <i className="fas fa-tasks text-blue-500"></i>
+          <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('myTasks')}</h2>
         </div>
         
         {/* Quick Stats Only */}
         <div className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-100'}`}>
-          <span className="flex items-center gap-1 text-xs font-semibold text-red-600">
+          <span className="flex items-center gap-1 text-xs font-semibold text-blue-500">
             <i className="fas fa-file-alt text-[10px]"></i>
             {taskCounts.exam}
           </span>
-          <span className="flex items-center gap-1 text-xs font-semibold text-blue-600">
+          <span className="flex items-center gap-1 text-xs font-semibold text-blue-500">
             <i className="fas fa-user text-[10px]"></i>
             {taskCounts.individual}
           </span>
-          <span className="flex items-center gap-1 text-xs font-semibold text-green-600">
+          <span className="flex items-center gap-1 text-xs font-semibold text-blue-500">
             <i className="fas fa-users text-[10px]"></i>
             {taskCounts.group}
           </span>
@@ -103,7 +105,7 @@ const StudyGoals = () => {
         {tasks.length === 0 ? (
           <div className={`text-center py-8 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
             <i className="fas fa-clipboard-list text-3xl mb-2 opacity-40"></i>
-            <p className="text-xs">No tasks yet</p>
+            <p className="text-xs">{t('noTasksYet')}</p>
           </div>
         ) : (
           tasks.slice(0, 10).map((task) => {

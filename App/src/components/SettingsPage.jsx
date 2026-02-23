@@ -1,26 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase-config';
-import { userService } from '../services/firestore-service';
+import { userService, deleteUserData } from '../services/firestore-service';
 import { signOut, updateProfile } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useLang } from '../contexts/LanguageContext';
 import Sidebar from './Sidebar';
 
 const SettingsPage = () => {
   const user = auth.currentUser;
   const navigate = useNavigate();
   const { isDarkMode } = useDarkMode();
+  const { t } = useLang();
   const [settings, setSettings] = useState({
     displayName: user?.displayName || '',
     pomodoroMinutes: 25,
     shortBreakMinutes: 5,
     longBreakMinutes: 15,
     autoStartBreaks: false,
-    soundEnabled: true,
-    focusMode: {
-      enabled: false,
-      blocklist: ['facebook.com', 'instagram.com', 'twitter.com', 'youtube.com', 'tiktok.com']
-    }
+    soundEnabled: true
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -30,15 +28,7 @@ const SettingsPage = () => {
       try {
         const profile = await userService.getProfile();
         if (profile?.settings) {
-          setSettings(prev => ({ 
-            ...prev, 
-            ...profile.settings,
-            // Ensure focusMode object exists if only partial settings loaded
-            focusMode: {
-              ...prev.focusMode,
-              ...(profile.settings.focusMode || {})
-            }
-          }));
+          setSettings(prev => ({ ...prev, ...profile.settings }));
         }
       } catch (error) {
         console.error('Error loading settings:', error);
@@ -62,8 +52,7 @@ const SettingsPage = () => {
           shortBreakMinutes: settings.shortBreakMinutes,
           longBreakMinutes: settings.longBreakMinutes,
           autoStartBreaks: settings.autoStartBreaks,
-          soundEnabled: settings.soundEnabled,
-          focusMode: settings.focusMode
+          soundEnabled: settings.soundEnabled
         }
       });
 
@@ -91,6 +80,9 @@ const SettingsPage = () => {
     if (!window.confirm('This will permanently delete all your data. Are you absolutely sure?')) return;
     
     try {
+      // Delete all user data from Firestore first
+      await deleteUserData();
+      // Then delete the auth account
       await auth.currentUser.delete();
       navigate('/');
     } catch (error) {
@@ -104,9 +96,9 @@ const SettingsPage = () => {
       <Sidebar user={user} />
       
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="flex-1 max-w-[800px] w-full mx-auto px-6 py-8 md:px-10 md:py-10 flex flex-col gap-6">
+        <div className="flex-1 w-full px-4 py-3 md:px-6 md:py-4 flex flex-col gap-3">
           {/* Header */}
-          <div className={`rounded-xl p-4 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
             <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
             <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Customize your Study Flow experience</p>
           </div>
@@ -126,12 +118,12 @@ const SettingsPage = () => {
           )}
 
           {/* Profile Section */}
-          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+            <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
               <i className="fas fa-user text-blue-600"></i>
-              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Profile</h2>
+              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('profileInfo')}</h2>
             </div>
-            <div className="flex items-center gap-5 mb-5">
+            <div className="flex items-center gap-3 mb-3">
               <div className="w-16 h-16 rounded-xl bg-blue-600 text-white flex items-center justify-center text-2xl font-bold">
                 {user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}
               </div>
@@ -141,7 +133,7 @@ const SettingsPage = () => {
               </div>
             </div>
             <div>
-              <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Display Name</label>
+              <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('displayName')}</label>
               <input
                 type="text"
                 value={settings.displayName}
@@ -152,14 +144,14 @@ const SettingsPage = () => {
           </div>
 
           {/* Timer Settings */}
-          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
-              <i className="fas fa-stopwatch text-red-500"></i>
-              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Timer Settings</h2>
+          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+            <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+              <i className="fas fa-stopwatch text-blue-500"></i>
+              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('timerSettings')}</h2>
             </div>
-            <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Pomodoro</label>
+                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('pomodoro')}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -173,7 +165,7 @@ const SettingsPage = () => {
                 </div>
               </div>
               <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Short Break</label>
+                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('shortBreakDuration')}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -187,7 +179,7 @@ const SettingsPage = () => {
                 </div>
               </div>
               <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Long Break</label>
+                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('longBreakDuration')}</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -231,60 +223,6 @@ const SettingsPage = () => {
             </div>
           </div>
 
-          {/* Focus Mode Configuration */}
-          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
-            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
-              <i className="fas fa-shield-alt text-purple-600"></i>
-              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Focus Mode (Site Blocking)</h2>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-               {/* Enable Toggle */}
-               <label className={`flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                <div className="flex flex-col">
-                  <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Enable Site Blocking</span>
-                  <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Blocks distracting sites when Focus Mode is active</span>
-                </div>
-                <div 
-                  onClick={() => setSettings({ 
-                    ...settings, 
-                    focusMode: { ...settings.focusMode, enabled: !settings.focusMode?.enabled } 
-                  })}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${
-                    settings.focusMode?.enabled ? 'bg-purple-600' : isDarkMode ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                    settings.focusMode?.enabled ? 'translate-x-5' : 'translate-x-0.5'
-                  }`} />
-                </div>
-              </label>
-
-              {/* Blocklist Input */}
-              <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
-                  Blocked Sites (one per line)
-                </label>
-                <textarea
-                  value={Array.isArray(settings.focusMode?.blocklist) ? settings.focusMode.blocklist.join('\n') : ''}
-                  onChange={(e) => setSettings({ 
-                    ...settings, 
-                    focusMode: { 
-                      ...settings.focusMode, 
-                      blocklist: e.target.value.split('\n').map(s => s.trim()).filter(s => s) 
-                    } 
-                  })}
-                  rows={5}
-                  placeholder="youtube.com&#10;instagram.com&#10;twitter.com"
-                  className={`w-full px-4 py-2.5 rounded-lg border text-sm font-mono focus:border-purple-500 focus:outline-none transition-all ${isDarkMode ? 'bg-slate-800 border-slate-600 text-white focus:bg-slate-700' : 'bg-gray-50 border-gray-200 focus:bg-white'}`}
-                />
-                <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
-                  Required permission must be granted in the Extension for blocking to work.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Save Button */}
           <button
             onClick={handleSave}
@@ -299,16 +237,16 @@ const SettingsPage = () => {
             ) : (
               <>
                 <i className="fas fa-save"></i>
-                Save Settings
+                {t('saveSettings')}
               </>
             )}
           </button>
 
           {/* Danger Zone */}
-          <div className={`rounded-xl p-5 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-red-900/50' : 'bg-white border-red-100'}`}>
-            <div className={`flex items-center gap-2 mb-4 pb-4 border-b ${isDarkMode ? 'border-red-900/50' : 'border-red-100'}`}>
+          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-red-900/50' : 'bg-white border-red-100'}`}>
+            <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-red-900/50' : 'border-red-100'}`}>
               <i className="fas fa-exclamation-triangle text-red-500"></i>
-              <h2 className="text-sm font-semibold text-red-600">Danger Zone</h2>
+              <h2 className="text-sm font-semibold text-red-600">{t('dangerZone')}</h2>
             </div>
             <div className="flex gap-3">
               <button
@@ -316,14 +254,14 @@ const SettingsPage = () => {
                 className={`flex-1 px-4 py-2.5 border rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
               >
                 <i className="fas fa-sign-out-alt"></i>
-                Sign Out
+                {t('signOutAccount')}
               </button>
               <button
                 onClick={handleDeleteAccount}
                 className={`flex-1 px-4 py-2.5 border border-red-200 rounded-lg font-medium text-red-600 transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'hover:bg-red-900/30' : 'hover:bg-red-50'}`}
               >
                 <i className="fas fa-trash-alt"></i>
-                Delete Account
+                {t('deleteAllData')}
               </button>
             </div>
           </div>

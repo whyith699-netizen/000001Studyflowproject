@@ -4,7 +4,6 @@
  */
 
 import { db, auth } from '../firebase-config';
-import { streakService } from './streak-service';
 import { 
   collection, 
   doc, 
@@ -22,6 +21,17 @@ import {
 // Generate unique ID
 const generateId = (prefix = 'item') => {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Input validation helpers
+const sanitize = (str, maxLen = 200) => {
+  if (typeof str !== 'string') return '';
+  return str.trim().slice(0, maxLen);
+};
+
+const sanitizeArray = (arr, maxItems = 50) => {
+  if (!Array.isArray(arr)) return [];
+  return arr.slice(0, maxItems);
 };
 
 /**
@@ -73,13 +83,20 @@ export const tasksService = {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
 
+    const text = sanitize(taskData.text, 500);
+    if (!text) throw new Error('Task text is required');
+
     const taskId = generateId('task');
     const taskRef = doc(db, 'users', user.uid, 'tasks', taskId);
     
     const newTask = {
       id: taskId,
-      text: taskData.text || '',
+      text,
       completed: false,
+      type: taskData.type || 'individual',
+      classId: taskData.classId || null,
+      className: taskData.className ? sanitize(taskData.className) : null,
+      priority: ['low', 'medium', 'high'].includes(taskData.priority) ? taskData.priority : 'medium',
       dueDate: taskData.dueDate || null,
       reminder: taskData.reminder || null,
       createdAt: Date.now(),
@@ -172,15 +189,23 @@ export const classesService = {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
 
+    const name = sanitize(classData.name, 100);
+    if (!name) throw new Error('Class name is required');
+
     const classId = generateId('class');
     const classRef = doc(db, 'users', user.uid, 'classes', classId);
     
     const newClass = {
       id: classId,
-      name: classData.name || '',
-      room: classData.room || '',
+      name,
+      icon: sanitize(classData.icon || 'fa-graduation-cap', 50),
+      days: sanitizeArray(classData.days || [], 7),
+      links: sanitizeArray(classData.links || [], 10).map(l => ({
+        title: sanitize(l.title || '', 100),
+        url: sanitize(l.url || '', 500)
+      })),
+      room: sanitize(classData.room || '', 50),
       color: classData.color || '#3B82F6',
-      schedule: classData.schedule || [],
       createdAt: Date.now(),
       updatedAt: serverTimestamp()
     };
@@ -236,25 +261,6 @@ export const userService = {
   },
 
   /**
-   * Subscribe to user profile updates
-   */
-  subscribeToProfile(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const userRef = doc(db, 'users', user.uid);
-    return onSnapshot(userRef, (snapshot) => {
-      if (snapshot.exists()) {
-        callback(snapshot.data());
-      } else {
-        callback(null);
-      }
-    }, (error) => {
-      console.error('Profile subscription error:', error);
-    });
-  },
-
-  /**
    * Update user profile
    */
   async updateProfile(updates) {
@@ -266,85 +272,10 @@ export const userService = {
       ...updates,
       lastSync: serverTimestamp()
     }, { merge: true });
-  },
-
-  /**
-   * Set Focus Mode state
-   */
-  async setFocusMode(enabled) {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const userRef = doc(db, 'users', user.uid);
-    await setDoc(userRef, {
-      settings: {
-        focusMode: {
-          enabled: enabled
-        }
-      }
-    }, { merge: true });
   }
 };
 
-/**
- * Exams Service
- */
-export const examsService = {
-  /**
-   * Subscribe to real-time exam updates
-   */
-  subscribeToExams(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
 
-    const examsRef = collection(db, 'users', user.uid, 'exams');
-    
-    return onSnapshot(examsRef, (snapshot) => {
-      const exams = [];
-      snapshot.forEach(doc => {
-        exams.push({ id: doc.id, ...doc.data() });
-      });
-      callback(exams);
-    }, (error) => {
-      console.error('Exams subscription error:', error);
-    });
-  },
-
-  /**
-   * Add a new exam
-   */
-  async addExam(examData) {
-    const user = auth.currentUser;
-    if (!user) throw new Error('Must be logged in');
-
-    const examId = generateId('exam');
-    const examRef = doc(db, 'users', user.uid, 'exams', examId);
-    
-    const newExam = {
-      id: examId,
-      title: examData.title || '',
-      subject: examData.subject || '',
-      date: examData.date || null,
-      time: examData.time || null,
-      createdAt: Date.now(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(examRef, newExam);
-    return newExam;
-  },
-
-  /**
-   * Delete an exam
-   */
-  async deleteExam(examId) {
-    const user = auth.currentUser;
-    if (!user) throw new Error('Must be logged in');
-
-    const examRef = doc(db, 'users', user.uid, 'exams', examId);
-    await deleteDoc(examRef);
-  }
-};
 
 /**
  * Study Sessions Service
@@ -391,7 +322,6 @@ export const studySessionsService = {
 
   /**
    * Add a completed study session
-   * Uses lightweight streak service (localStorage first)
    */
   async addSession(sessionData) {
     const user = auth.currentUser;
@@ -399,7 +329,7 @@ export const studySessionsService = {
 
     const sessionId = generateId('session');
     const sessionRef = doc(db, 'users', user.uid, 'studySessions', sessionId);
-
+    
     const newSession = {
       id: sessionId,
       type: sessionData.type || 'pomodoro', // pomodoro, shortBreak, longBreak
@@ -411,13 +341,48 @@ export const studySessionsService = {
     };
 
     await setDoc(sessionRef, newSession);
-
-    // Update user's streak using lightweight service (localStorage only)
-    streakService.recordStudy();
-
+    
+    // Update user's streak
+    await updateStreak(user.uid);
+    
     return newSession;
   }
 };
+
+/**
+ * Helper: Update user streak
+ */
+async function updateStreak(userId) {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists() ? userSnap.data() : {};
+  
+  const today = new Date().toDateString();
+  const lastStudyDate = userData.lastStudyDate;
+  
+  let newStreak = userData.streak || 0;
+  
+  if (lastStudyDate === today) {
+    // Already studied today, no change
+  } else {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (lastStudyDate === yesterday.toDateString()) {
+      // Studied yesterday, increment streak
+      newStreak += 1;
+    } else {
+      // Streak broken, reset to 1
+      newStreak = 1;
+    }
+  }
+  
+  await setDoc(userRef, {
+    streak: newStreak,
+    lastStudyDate: today,
+    lastSync: serverTimestamp()
+  }, { merge: true });
+}
 
 /**
  * Uniforms Service - Custom uniform per day
@@ -474,12 +439,38 @@ export const uniformsService = {
   }
 };
 
+/**
+ * Delete all user data from Firestore (for account deletion)
+ */
+export async function deleteUserData() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Must be logged in');
+
+  const subcollections = ['tasks', 'classes', 'studySessions', 'exams'];
+  
+  for (const sub of subcollections) {
+    const ref = collection(db, 'users', user.uid, sub);
+    const snapshot = await getDocs(ref);
+    const deletePromises = [];
+    snapshot.forEach(d => {
+      deletePromises.push(deleteDoc(doc(db, 'users', user.uid, sub, d.id)));
+    });
+    await Promise.all(deletePromises);
+  }
+
+  // Delete settings subcollection
+  const settingsRef = doc(db, 'users', user.uid, 'settings', 'uniforms');
+  await deleteDoc(settingsRef).catch(() => {});
+
+  // Delete user document
+  const userRef = doc(db, 'users', user.uid);
+  await deleteDoc(userRef);
+}
+
 export default {
   tasks: tasksService,
   classes: classesService,
   user: userService,
-  exams: examsService,
   studySessions: studySessionsService,
   uniforms: uniformsService
 };
-

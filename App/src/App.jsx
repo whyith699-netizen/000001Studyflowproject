@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DarkModeProvider } from './contexts/DarkModeContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import FocusMode from './components/FocusMode';
@@ -12,6 +13,7 @@ import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
+    <LanguageProvider>
     <DarkModeProvider>
       <BrowserRouter basename="/StudyFlowDasboarduser">
         <Routes>
@@ -68,6 +70,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </DarkModeProvider>
+    </LanguageProvider>
   );
 }
 

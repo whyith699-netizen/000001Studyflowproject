@@ -7,8 +7,8 @@
 
 :root {
   /* Primary Colors - Extension Match */
-  --primary: #2563eb;
-  --primary-light: #3b82f6;
+  --primary: #3b82f6;
+  --primary-light: #60a5fa;
   --primary-dark: #1d4ed8;
   
   /* Status Colors */
@@ -134,7 +134,7 @@ body {
 .sf-card {
   background: var(--white);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
@@ -145,7 +145,7 @@ body {
 
 /* Buttons - Extension Style */
 .sf-btn {
-  padding: 10px 18px;
+  padding: 8px 14px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -155,7 +155,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .sf-btn-primary {
@@ -273,7 +273,7 @@ body {
 /* Form Inputs - Extension Style */
 .sf-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 0.875rem;
@@ -292,9 +292,9 @@ body {
 .sf-section-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
 }
 

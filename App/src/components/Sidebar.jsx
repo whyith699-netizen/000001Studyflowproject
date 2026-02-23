@@ -3,16 +3,15 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase-config';
 import { useDarkMode } from '../contexts/DarkModeContext';
-import { streakService } from '../services/streak-service';
+import { useLang } from '../contexts/LanguageContext';
 
 const Sidebar = ({ user }) => {
   const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { lang, toggleLang, t } = useLang();
 
   const handleLogout = async () => {
     try {
-      // Sync streak to Firestore before logout
-      await streakService.saveToFirestore();
       await signOut(auth);
       navigate('/');
     } catch (error) {
@@ -21,21 +20,21 @@ const Sidebar = ({ user }) => {
   };
 
   const navItems = [
-    { path: '/dashboard', icon: 'fa-th-large', label: 'Dashboard' },
-    { path: '/focus', icon: 'fa-clock', label: 'Focus Mode' },
-    { path: '/schedule', icon: 'fa-calendar-alt', label: 'Jadwal' },
-    { path: '/reports', icon: 'fa-chart-bar', label: 'Reports' },
-    { path: '/settings', icon: 'fa-cog', label: 'Settings' },
+    { path: '/dashboard', icon: 'fa-th-large', label: t('dashboard') },
+    { path: '/focus', icon: 'fa-clock', label: t('focusMode') },
+    { path: '/schedule', icon: 'fa-calendar-alt', label: t('schedule') },
+    { path: '/reports', icon: 'fa-chart-bar', label: t('reports') },
+    { path: '/settings', icon: 'fa-cog', label: t('settings') },
   ];
 
   return (
-    <aside className={`w-60 flex-shrink-0 flex flex-col border-r transition-colors duration-200 hidden md:flex ${
+    <aside className={`w-52 flex-shrink-0 flex flex-col border-r transition-colors duration-200 hidden md:flex ${
       isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'
     }`}>
-      <div className="flex h-full flex-col justify-between p-4">
-        <div className="flex flex-col gap-5">
+      <div className="flex h-full flex-col justify-between p-3">
+        <div className="flex flex-col gap-3">
           {/* Logo & User Profile */}
-          <div className={`flex items-center gap-3 px-2 pb-4 border-b ${
+          <div className={`flex items-center gap-3 px-2 pb-3 border-b ${
             isDarkMode ? 'border-slate-700' : 'border-gray-100'
           }`}>
             <div 
@@ -84,9 +83,27 @@ const Sidebar = ({ user }) => {
         </div>
 
         {/* Bottom Actions */}
-        <div className={`border-t pt-4 flex flex-col gap-2 ${
+        <div className={`border-t pt-3 flex flex-col gap-2 ${
           isDarkMode ? 'border-slate-700' : 'border-gray-100'
         }`}>
+          {/* Language Toggle */}
+          <button
+            onClick={toggleLang}
+            className={`flex items-center gap-3 px-3 py-2 w-full text-left rounded-lg transition-colors ${
+              isDarkMode 
+                ? 'hover:bg-slate-700 text-slate-300' 
+                : 'hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            <i className="fas fa-globe text-base w-5 text-center"></i>
+            <span className="text-sm font-medium">{lang === 'en' ? 'English' : 'Indonesia'}</span>
+            <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded ${
+              isDarkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+            }`}>
+              {lang.toUpperCase()}
+            </span>
+          </button>
+
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleDarkMode}
@@ -97,7 +114,7 @@ const Sidebar = ({ user }) => {
             }`}
           >
             <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'} text-base w-5 text-center`}></i>
-            <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+            <span className="text-sm font-medium">{isDarkMode ? t('lightMode') : t('darkMode')}</span>
           </button>
           
           {/* Logout */}
@@ -106,7 +123,7 @@ const Sidebar = ({ user }) => {
             className="flex items-center gap-3 px-3 py-2 w-full text-left rounded-lg hover:bg-red-50 text-red-500 transition-colors"
           >
             <i className="fas fa-sign-out-alt text-base w-5 text-center"></i>
-            <span className="text-sm font-medium">Log Out</span>
+            <span className="text-sm font-medium">{t('logOut')}</span>
           </button>
         </div>
       </div>

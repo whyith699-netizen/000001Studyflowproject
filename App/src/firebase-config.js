@@ -5,7 +5,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentSingleTabManager } from "firebase/firestore";
 
 // Firebase configuration - Same as extension
 const firebaseConfig = {
@@ -21,7 +21,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+
+// Initialize Firestore with persistent cache (replaces deprecated enableIndexedDbPersistence)
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        tabManager: persistentSingleTabManager({})
+    })
+});
 
 // Set auth persistence to LOCAL (survives browser restarts)
 setPersistence(auth, browserLocalPersistence)
@@ -32,18 +38,6 @@ setPersistence(auth, browserLocalPersistence)
         console.error('Error setting auth persistence:', error);
     });
 
-// Enable offline persistence for Firestore
-try {
-    enableIndexedDbPersistence(db).catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.warn('Firestore persistence failed: Multiple tabs open');
-        } else if (err.code == 'unimplemented') {
-            console.warn('Firestore persistence not available in this browser');
-        }
-    });
-} catch (e) {
-    console.warn("Persistence error:", e);
-}
-
 export { app, auth, db };
+
 

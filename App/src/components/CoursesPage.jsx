@@ -24,6 +24,14 @@ const CLASS_ICONS = [
   { icon: 'fa-cross', label: 'Religion' },
 ];
 
+// Resolve class icon - handles both 'fa-book' and 'book' formats (Extension compatibility)
+const getClassIcon = (cls) => {
+  const icon = cls.icon;
+  if (!icon) return 'fa-graduation-cap';
+  if (icon.startsWith('fa-')) return icon;
+  return `fa-${icon}`;
+};
+
 const DAYS = [
   { value: 'monday', label: 'Mon' },
   { value: 'tuesday', label: 'Tue' },
@@ -173,7 +181,7 @@ const CoursesPage = () => {
       <Sidebar user={user} />
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="flex-1 max-w-[1200px] w-full mx-auto px-4 py-4 md:px-6 md:py-5">
+        <div className="flex-1 w-full px-4 py-4 md:px-6 md:py-5">
           {/* Header */}
           <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm mb-4">
             {/* Top Row: Title & Add Button */}
@@ -271,7 +279,7 @@ const CoursesPage = () => {
                     >
                       {/* Icon */}
                       <div className="w-9 h-9 flex items-center justify-center bg-white group-hover:bg-blue-500 rounded-full text-gray-600 group-hover:text-white transition-all relative flex-shrink-0">
-                        <i className={`fas ${cls.icon || 'fa-chalkboard-teacher'} text-sm`}></i>
+                        <i className={`fas ${getClassIcon(cls)} text-sm`}></i>
                         {classTasks.length > 0 && (
                           <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                             {classTasks.length}
