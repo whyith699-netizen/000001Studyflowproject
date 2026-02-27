@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
 import { auth } from '../firebase-config';
 import { userService } from '../services/firestore-service';
 import { useNavigate } from 'react-router-dom';
+import { useLang } from '../contexts/LanguageContext';
 
 const Login = () => {
+  const { t } = useLang();
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   // Check if user is already logged in
@@ -25,28 +36,65 @@ const Login = () => {
     return () => unsubscribe();
   }, [navigate]);
 
+  const syncProfile = async (firebaseUser) => {
+    const fallbackDisplayName = firebaseUser.email?.split('@')[0] || 'StudyFlow User';
+    try {
+      await userService.updateProfile({
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || fallbackDisplayName,
+        photoURL: firebaseUser.photoURL || null,
+        lastLogin: new Date().toISOString()
+      });
+    } catch (profileError) {
+      console.error('Profile sync failed after login:', profileError);
+    }
+  };
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const normalizedIdentifier = identifier.trim().toLowerCase();
+      if (!normalizedIdentifier || !password) {
+        setError('Please fill username/email and password.');
+        return;
+      }
+      if (!normalizedIdentifier.includes('@')) {
+        setError('Username login is not available yet. Please use email.');
+        return;
+      }
+
+      const result = await signInWithEmailAndPassword(auth, normalizedIdentifier, password);
+      await syncProfile(result.user);
+      // Navigation will be handled by onAuthStateChanged
+    } catch (err) {
+      console.error('Email login failed:', err);
+      const messages = {
+        'auth/invalid-credential': 'Invalid email or password.',
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/wrong-password': 'Incorrect password.',
+        'auth/invalid-email': 'Invalid email format.',
+        'auth/too-many-requests': 'Too many failed attempts. Try again later.'
+      };
+      setError(messages[err.code] || err.message || 'Failed to sign in.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleLogin = async () => {
     try {
       setError(null);
+      setIsSubmitting(true);
       const provider = new GoogleAuthProvider();
       // Add prompt to select account
       provider.setCustomParameters({
         prompt: 'select_account'
       });
       const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-      const fallbackDisplayName = firebaseUser.email?.split('@')[0] || 'StudyFlow User';
-
-      try {
-        await userService.updateProfile({
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || fallbackDisplayName,
-          photoURL: firebaseUser.photoURL || null,
-          lastLogin: new Date().toISOString()
-        });
-      } catch (profileError) {
-        console.error('Profile sync failed after login:', profileError);
-      }
+      await syncProfile(result.user);
       // Navigation will be handled by onAuthStateChanged
     } catch (err) {
       console.error("Login failed:", err);
@@ -68,6 +116,8 @@ const Login = () => {
       }
       
       setError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -111,10 +161,65 @@ const Login = () => {
             </div>
           )}
 
+          <form onSubmit={handleEmailLogin} className="space-y-4 mb-5">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                {t('usernameOrEmail')}
+              </label>
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm"
+                placeholder="you@example.com"
+                autoComplete="username"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+                {t('password')}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 pr-10 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 text-sm"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-700 transition-colors disabled:opacity-60"
+            >
+              {isSubmitting && <i className="fas fa-spinner fa-spin"></i>}
+              {t('signIn')}
+            </button>
+          </form>
+
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-gray-200"></div>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">or</span>
+            <div className="flex-1 h-px bg-gray-200"></div>
+          </div>
+
           <div>
             <button
               onClick={handleLogin}
-              className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              disabled={isSubmitting}
+              className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors disabled:opacity-60"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -122,7 +227,7 @@ const Login = () => {
                 <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign in with Google
+              {t('signInWithGoogle')}
             </button>
           </div>
           

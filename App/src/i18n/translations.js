@@ -160,6 +160,7 @@ const translations = {
     // Login
     signIn: 'Sign In',
     signInWithGoogle: 'Sign in with Google',
+    usernameOrEmail: 'Username / Email',
     email: 'Email',
     password: 'Password',
 
@@ -192,6 +193,25 @@ const translations = {
     edit: 'Edit',
     noClasses: 'No classes added yet',
     mySchedule: 'My Schedule',
+
+    // Calendar & Roadmap
+    calendarTitle: 'Calendar',
+    calendarSubtitle: 'Track events and plan your month ahead',
+    calTab: 'Calendar',
+    roadmapTab: 'Roadmap',
+    roadmapTitle: '30-Day Roadmap',
+    roadmapSubtitle: 'Upcoming events and deadlines for the next 30 days',
+    addEvent: 'Add Event',
+    editEvent: 'Edit Event',
+    eventTitle: 'Event title...',
+    eventDesc: 'Description (optional)',
+    noEventsDay: 'No events on this day',
+    moreEvents: 'more',
+    evType_event: 'Event',
+    evType_task: 'Task',
+    evType_exam: 'Exam',
+    evType_reminder: 'Reminder',
+    evType_week: 'Week Event',
   },
 
   id: {
@@ -355,6 +375,7 @@ const translations = {
     // Login
     signIn: 'Masuk',
     signInWithGoogle: 'Masuk dengan Google',
+    usernameOrEmail: 'Username / Email',
     email: 'Email',
     password: 'Kata Sandi',
 
@@ -387,6 +408,25 @@ const translations = {
     edit: 'Edit',
     noClasses: 'Belum ada kelas',
     mySchedule: 'Jadwal Saya',
+
+    // Calendar & Roadmap
+    calendarTitle: 'Kalender',
+    calendarSubtitle: 'Lacak acara dan rencanakan sebulan ke depan',
+    calTab: 'Kalender',
+    roadmapTab: 'Roadmap',
+    roadmapTitle: 'Roadmap 30 Hari',
+    roadmapSubtitle: 'Acara dan tenggat waktu 30 hari ke depan',
+    addEvent: 'Tambah Acara',
+    editEvent: 'Edit Acara',
+    eventTitle: 'Judul acara...',
+    eventDesc: 'Keterangan (opsional)',
+    noEventsDay: 'Tidak ada acara hari ini',
+    moreEvents: 'lainnya',
+    evType_event: 'Acara',
+    evType_task: 'Tugas',
+    evType_exam: 'Ujian',
+    evType_reminder: 'Pengingat',
+    evType_week: 'Acara Mingguan',
   },
 };
 
