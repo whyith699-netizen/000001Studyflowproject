@@ -21,8 +21,10 @@ const Sidebar = ({ user }) => {
 
   const navItems = [
     { path: '/dashboard', icon: 'fa-th-large', label: t('dashboard') },
+    { path: '/schedule', icon: 'fa-stream', label: t('schedule') },
     { path: '/focus', icon: 'fa-clock', label: t('focusMode') },
-    { path: '/schedule', icon: 'fa-calendar-alt', label: t('schedule') },
+    { path: '/tasks', icon: 'fa-clipboard-list', label: t('myTasks') },
+    { path: '/calendar', icon: 'fa-calendar-days', label: t('calendarTitle') },
     { path: '/reports', icon: 'fa-chart-bar', label: t('reports') },
     { path: '/settings', icon: 'fa-cog', label: t('settings') },
   ];
