@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { studySessionsService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useTimer } from '../contexts/TimerContext';
 
 const WeeklyProgress = () => {
   const { isDarkMode } = useDarkMode();
+  const { liveElapsedMinutes } = useTimer();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +50,20 @@ const WeeklyProgress = () => {
   };
 
   const dailyData = getDailyData();
-  const totalHours = (dailyData.reduce((acc, d) => acc + d.minutes, 0) / 60).toFixed(1);
+
+  // Add live elapsed time to today's data
+  const liveData = dailyData.map(day => {
+    if (day.isToday && liveElapsedMinutes > 0) {
+      const newMinutes = day.minutes + liveElapsedMinutes;
+      return { ...day, minutes: newMinutes, hours: (newMinutes / 60).toFixed(1) };
+    }
+    return day;
+  });
+  // Recalculate percentages with live data
+  const maxMinutesLive = Math.max(...liveData.map(d => d.minutes), 60);
+  const finalData = liveData.map(d => ({ ...d, percentage: Math.max((d.minutes / maxMinutesLive) * 100, 5) }));
+
+  const totalHours = (finalData.reduce((acc, d) => acc + d.minutes, 0) / 60).toFixed(1);
 
   if (loading) {
     return (
@@ -78,7 +93,7 @@ const WeeklyProgress = () => {
       </div>
       
       <div className="flex-1 min-h-[120px] flex items-end justify-between gap-3 px-2">
-        {dailyData.map((day) => (
+        {finalData.map((day) => (
           <div key={day.name} className="flex flex-col items-center gap-2 group flex-1">
             <div className={`w-full rounded-lg relative h-full flex items-end overflow-hidden border transition-colors ${
               isDarkMode 

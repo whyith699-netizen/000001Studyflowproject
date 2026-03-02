@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { tasksService, studySessionsService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useLang } from '../contexts/LanguageContext';
+import { useTimer } from '../contexts/TimerContext';
 
 const Timer = ({ mode = 'compact', onTimeUpdate }) => {
   const { isDarkMode } = useDarkMode();
   const { t } = useLang();
+  const { timerStart: ctxStart, timerPause: ctxPause, timerReset: ctxReset } = useTimer();
   const [timerMode, setTimerMode] = useState('pomodoro'); // pomodoro, shortBreak, longBreak
   const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
   const [isRunning, setIsRunning] = useState(false);
@@ -35,14 +37,16 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
     setSessionStartTime(null);
   }, []);
 
-  // Save session when timer completes
-  const saveSession = async () => {
-    const duration = Math.floor((timerModes[timerMode].time - timeLeft) / 60);
+  // Save session (full or partial)
+  const saveSession = async (isPartial = false) => {
+    const totalTime = timerModes[timerMode].time;
+    const elapsedSeconds = totalTime - timeLeft;
+    const duration = isPartial ? Math.floor(elapsedSeconds / 60) : totalTime / 60;
     if (duration > 0) {
       try {
         await studySessionsService.addSession({
           type: timerMode,
-          duration: timerModes[timerMode].time / 60,
+          duration,
           taskId: selectedTask?.id || null,
           taskName: selectedTask?.text || null
         });
@@ -59,6 +63,7 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
         setTimeLeft(time => {
           if (time <= 1) {
             setIsRunning(false);
+            ctxReset();
             // Save completed session
             saveSession();
             // Play notification sound or show alert
@@ -90,13 +95,24 @@ const Timer = ({ mode = 'compact', onTimeUpdate }) => {
     if (!isRunning && !sessionStartTime) {
       setSessionStartTime(Date.now());
     }
+    if (!isRunning) {
+      ctxStart(timerMode);
+    } else {
+      ctxPause();
+    }
     setIsRunning(!isRunning);
   };
   
   const resetTimer = () => {
+    // Save partial session if timer was used
+    const elapsed = timerModes[timerMode].time - timeLeft;
+    if (elapsed > 60 && timerMode === 'pomodoro') {
+      saveSession(true);
+    }
     setTimeLeft(timerModes[timerMode].time);
     setIsRunning(false);
     setSessionStartTime(null);
+    ctxReset();
   };
 
   const handleSelectTask = (task) => {

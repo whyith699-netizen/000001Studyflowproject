@@ -3,12 +3,14 @@ import { auth } from '../firebase-config';
 import { studySessionsService, userService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useLang } from '../contexts/LanguageContext';
+import { useTimer } from '../contexts/TimerContext';
 import Sidebar from './Sidebar';
 
 const ReportsPage = () => {
   const user = auth.currentUser;
   const { isDarkMode } = useDarkMode();
   const { t } = useLang();
+  const { liveElapsedMinutes } = useTimer();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('week');
@@ -57,7 +59,7 @@ const ReportsPage = () => {
   const filteredSessions = sessions.filter(filterByPeriod);
   const sessionMinutes = filteredSessions.reduce((acc, s) => acc + (s.duration || 0), 0);
   // For "All Time", include Extension's tracked study time
-  const totalMinutes = selectedPeriod === 'all' ? sessionMinutes + extensionStudyTime : sessionMinutes;
+  const totalMinutes = (selectedPeriod === 'all' ? sessionMinutes + extensionStudyTime : sessionMinutes) + liveElapsedMinutes;
   const totalHours = Math.floor(totalMinutes / 60);
   const remainingMinutes = totalMinutes % 60;
   const completedPomodoros = filteredSessions.filter(s => s.type === 'pomodoro').length;
@@ -73,12 +75,17 @@ const ReportsPage = () => {
     });
 
     const maxMinutes = Math.max(...data, 60);
-    return days.map((name, i) => ({
-      name,
-      minutes: data[i],
-      percentage: Math.max((data[i] / maxMinutes) * 100, 5),
-      isToday: i === today
-    }));
+    return days.map((name, i) => {
+      let mins = data[i];
+      // Add live elapsed to today
+      if (i === today) mins += liveElapsedMinutes;
+      return {
+        name,
+        minutes: mins,
+        percentage: Math.max((mins / Math.max(...data.map((d, idx) => idx === today ? d + liveElapsedMinutes : d), 60)) * 100, 5),
+        isToday: i === today
+      };
+    });
   };
 
   const dailyData = getDailyData();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { auth } from '../firebase-config';
 import { classesService, tasksService, uniformsService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
@@ -71,9 +71,10 @@ const SchedulePage = () => {
     days: [],
     links: [{ title: '', url: '' }]
   });
-  
 
-  
+  // Search & filter for classes
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterDay, setFilterDay] = useState('All');
   // Uniforms state
   const [uniforms, setUniforms] = useState({});
   const [editingDay, setEditingDay] = useState(null);
@@ -107,8 +108,34 @@ const SchedulePage = () => {
 
   // Helper functions
   const getClassTasks = (classId) => tasks.filter(t => t.classId === classId && !t.completed);
-  
 
+  // Filtered classes
+  const filteredClasses = useMemo(() => {
+    let result = classes;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c => c.name?.toLowerCase().includes(q));
+    }
+    if (filterDay !== 'All') {
+      // Build all possible name variants for matching (monday, mon, senin, etc.)
+      const dayDef = DAYS.find(d => d.value === filterDay);
+      if (dayDef) {
+        const variants = [
+          dayDef.value,                          // monday
+          dayDef.value.charAt(0).toUpperCase() + dayDef.value.slice(1), // Monday
+          dayDef.value.slice(0, 3),              // mon
+          dayDef.value.charAt(0).toUpperCase() + dayDef.value.slice(1, 3), // Mon
+          dayDef.shortKey,                       // senin
+          dayDef.shortKey.charAt(0).toUpperCase() + dayDef.shortKey.slice(1), // Senin
+        ].map(v => v.toLowerCase());
+
+        result = result.filter(c =>
+          c.days?.some(d => variants.includes(d.toLowerCase()))
+        );
+      }
+    }
+    return result;
+  }, [classes, searchQuery, filterDay, DAYS]);
 
   // Classes handlers
   const handleAddClass = async (e) => {
@@ -184,7 +211,7 @@ const SchedulePage = () => {
       <Sidebar user={user} />
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="flex-1 w-full px-4 py-4 md:px-6 md:py-5">
+        <div className="flex-1 w-full px-4 py-4 md:px-6 md:py-5 flex flex-col">
           {/* Header with Tabs */}
           <div className={`rounded-xl p-3 border shadow-sm mb-3 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
             <div className="flex items-center justify-between mb-3">
@@ -234,7 +261,7 @@ const SchedulePage = () => {
           </div>
 
           {/* Tab Content */}
-          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
+          <div className={`rounded-xl p-3 border shadow-sm flex-1 flex flex-col min-h-0 ${isDarkMode ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-gray-100'}`}>
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
@@ -244,17 +271,55 @@ const SchedulePage = () => {
                 {/* Classes Tab */}
                 {activeTab === 'classes' && (
                   <div>
-                    {classes.length === 0 ? (
+                    {/* Search & Day Filter */}
+                    <div className="flex flex-col gap-2 mb-3">
+                      {/* Search */}
+                      <div className="relative">
+                        <i className={`fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}></i>
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          placeholder={t('search')}
+                          className={`w-full py-2 pl-8 pr-3 border rounded-lg text-sm focus:outline-none focus:border-blue-500 transition-all ${
+                            isDarkMode ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500' : 'bg-gray-100 border-gray-200 text-gray-800 placeholder-gray-400'
+                          }`}
+                        />
+                      </div>
+                      {/* Day Filter */}
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {['All', ...DAYS.map(d => d.value)].map(day => {
+                          const label = day === 'All' ? t('allDays') : t(DAYS.find(d => d.value === day)?.shortKey || day);
+                          return (
+                            <button
+                              key={day}
+                              onClick={() => setFilterDay(day)}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border flex-1 min-w-0 text-center whitespace-nowrap transition-all ${
+                                filterDay === day
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {filteredClasses.length === 0 ? (
                       <div className={`text-center py-12 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
                         <i className="fas fa-chalkboard text-4xl mb-3 opacity-30"></i>
-                        <p className="text-sm">{t('noClassesYet')}</p>
-                        <button onClick={() => setShowAddClassModal(true)} className="mt-3 text-blue-600 text-sm font-medium hover:underline">
-                          {t('addFirstClass')}
-                        </button>
+                        <p className="text-sm">{searchQuery || filterDay !== 'All' ? t('noClassesFound') : t('noClassesYet')}</p>
+                        {classes.length === 0 && (
+                          <button onClick={() => setShowAddClassModal(true)} className="mt-3 text-blue-600 text-sm font-medium hover:underline">
+                            {t('addFirstClass')}
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                        {classes.map(cls => {
+                        {filteredClasses.map(cls => {
                           const classTasks = getClassTasks(cls.id);
                           return (
                             <div

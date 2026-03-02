@@ -8,7 +8,7 @@ import Timer from './Timer';
 import WeeklyProgress from './WeeklyProgress';
 import StudyGoals from './StudyGoals';
 
-const DAYS_MAP = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const DAYS_LABEL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 // Resolve class icon - handles both 'fa-book' and 'book' formats (Extension compatibility)

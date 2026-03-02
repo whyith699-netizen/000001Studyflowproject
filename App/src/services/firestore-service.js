@@ -38,9 +38,6 @@ const sanitizeArray = (arr, maxItems = 50) => {
  * Tasks Service
  */
 export const tasksService = {
-  /**
-   * Get all tasks for current user
-   */
   async getTasks() {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -56,9 +53,6 @@ export const tasksService = {
     return tasks;
   },
 
-  /**
-   * Subscribe to real-time task updates
-   */
   subscribeToTasks(callback) {
     const user = auth.currentUser;
     if (!user) return () => {};
@@ -76,9 +70,6 @@ export const tasksService = {
     });
   },
 
-  /**
-   * Add a new task
-   */
   async addTask(taskData) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -107,9 +98,6 @@ export const tasksService = {
     return newTask;
   },
 
-  /**
-   * Update a task
-   */
   async updateTask(taskId, updates) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -121,16 +109,10 @@ export const tasksService = {
     });
   },
 
-  /**
-   * Toggle task completion
-   */
   async toggleTask(taskId, completed) {
     return this.updateTask(taskId, { completed });
   },
 
-  /**
-   * Delete a task
-   */
   async deleteTask(taskId) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -144,9 +126,6 @@ export const tasksService = {
  * Classes Service
  */
 export const classesService = {
-  /**
-   * Get all classes for current user
-   */
   async getClasses() {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -162,9 +141,6 @@ export const classesService = {
     return classes;
   },
 
-  /**
-   * Subscribe to real-time class updates
-   */
   subscribeToClasses(callback) {
     const user = auth.currentUser;
     if (!user) return () => {};
@@ -182,9 +158,6 @@ export const classesService = {
     });
   },
 
-  /**
-   * Add a new class
-   */
   async addClass(classData) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -214,9 +187,6 @@ export const classesService = {
     return newClass;
   },
 
-  /**
-   * Update a class
-   */
   async updateClass(classId, updates) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -228,9 +198,6 @@ export const classesService = {
     });
   },
 
-  /**
-   * Delete a class
-   */
   async deleteClass(classId) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -244,9 +211,6 @@ export const classesService = {
  * User Profile Service
  */
 export const userService = {
-  /**
-   * Get user profile
-   */
   async getProfile() {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -260,9 +224,6 @@ export const userService = {
     return null;
   },
 
-  /**
-   * Update user profile
-   */
   async updateProfile(updates) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -283,15 +244,10 @@ export const userService = {
   }
 };
 
-
-
 /**
  * Study Sessions Service
  */
 export const studySessionsService = {
-  /**
-   * Subscribe to real-time session updates
-   */
   subscribeToSessions(callback) {
     const user = auth.currentUser;
     if (!user) return () => {};
@@ -310,9 +266,6 @@ export const studySessionsService = {
     });
   },
 
-  /**
-   * Get sessions for a specific date range
-   */
   async getSessionsForWeek() {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -328,9 +281,6 @@ export const studySessionsService = {
     return sessions;
   },
 
-  /**
-   * Add a completed study session
-   */
   async addSession(sessionData) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -340,8 +290,8 @@ export const studySessionsService = {
     
     const newSession = {
       id: sessionId,
-      type: sessionData.type || 'pomodoro', // pomodoro, shortBreak, longBreak
-      duration: sessionData.duration || 25, // in minutes
+      type: sessionData.type || 'pomodoro',
+      duration: sessionData.duration || 25,
       taskId: sessionData.taskId || null,
       taskName: sessionData.taskName || null,
       completedAt: Date.now(),
@@ -349,8 +299,6 @@ export const studySessionsService = {
     };
 
     await setDoc(sessionRef, newSession);
-    
-    // Update user's streak
     await updateStreak(user.uid);
     
     return newSession;
@@ -377,10 +325,8 @@ async function updateStreak(userId) {
     yesterday.setDate(yesterday.getDate() - 1);
     
     if (lastStudyDate === yesterday.toDateString()) {
-      // Studied yesterday, increment streak
       newStreak += 1;
     } else {
-      // Streak broken, reset to 1
       newStreak = 1;
     }
   }
@@ -396,9 +342,6 @@ async function updateStreak(userId) {
  * Uniforms Service - Custom uniform per day
  */
 export const uniformsService = {
-  /**
-   * Get uniforms settings
-   */
   async getUniforms() {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -412,9 +355,6 @@ export const uniformsService = {
     return {};
   },
 
-  /**
-   * Subscribe to uniforms updates
-   */
   subscribeToUniforms(callback) {
     const user = auth.currentUser;
     if (!user) return () => {};
@@ -432,9 +372,6 @@ export const uniformsService = {
     });
   },
 
-  /**
-   * Save uniforms settings
-   */
   async saveUniforms(uniformsData) {
     const user = auth.currentUser;
     if (!user) throw new Error('Must be logged in');
@@ -448,13 +385,79 @@ export const uniformsService = {
 };
 
 /**
+ * Calendar Events Service
+ */
+export const calendarEventsService = {
+  subscribeToEvents(callback) {
+    const user = auth.currentUser;
+    if (!user) return () => {};
+
+    const ref = collection(db, 'users', user.uid, 'calendarEvents');
+    const q = query(ref, orderBy('date', 'asc'));
+
+    return onSnapshot(q, (snapshot) => {
+      const events = [];
+      snapshot.forEach(doc => events.push({ id: doc.id, ...doc.data() }));
+      callback(events);
+    }, (error) => {
+      console.error('CalendarEvents subscription error:', error);
+    });
+  },
+
+  async addEvent(eventData) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in');
+
+    const id = generateId('cal');
+    const ref = doc(db, 'users', user.uid, 'calendarEvents', id);
+    const newEvent = {
+      id,
+      title: sanitize(eventData.title, 200),
+      type: ['event', 'task', 'exam', 'reminder', 'week'].includes(eventData.type) ? eventData.type : 'event',
+      date: eventData.date || '',
+      endDate: eventData.endDate || null,
+      time: eventData.time || '',
+      description: sanitize(eventData.description || '', 500),
+      createdAt: Date.now(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(ref, newEvent);
+    return newEvent;
+  },
+
+  async updateEvent(eventId, updates) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in');
+
+    const ref = doc(db, 'users', user.uid, 'calendarEvents', eventId);
+    await updateDoc(ref, {
+      title: sanitize(updates.title || '', 200),
+      type: updates.type || 'event',
+      date: updates.date || '',
+      endDate: updates.endDate !== undefined ? updates.endDate : null,
+      time: updates.time || '',
+      description: sanitize(updates.description || '', 500),
+      updatedAt: serverTimestamp()
+    });
+  },
+
+  async deleteEvent(eventId) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Must be logged in');
+
+    const ref = doc(db, 'users', user.uid, 'calendarEvents', eventId);
+    await deleteDoc(ref);
+  }
+};
+
+/**
  * Delete all user data from Firestore (for account deletion)
  */
 export async function deleteUserData() {
   const user = auth.currentUser;
   if (!user) throw new Error('Must be logged in');
 
-  const subcollections = ['tasks', 'classes', 'studySessions', 'exams'];
+  const subcollections = ['tasks', 'classes', 'studySessions', 'exams', 'calendarEvents'];
   
   for (const sub of subcollections) {
     const ref = collection(db, 'users', user.uid, sub);
@@ -466,11 +469,9 @@ export async function deleteUserData() {
     await Promise.all(deletePromises);
   }
 
-  // Delete settings subcollection
   const settingsRef = doc(db, 'users', user.uid, 'settings', 'uniforms');
   await deleteDoc(settingsRef).catch(() => {});
 
-  // Delete user document
   const userRef = doc(db, 'users', user.uid);
   await deleteDoc(userRef);
 }
@@ -480,5 +481,6 @@ export default {
   classes: classesService,
   user: userService,
   studySessions: studySessionsService,
-  uniforms: uniformsService
+  uniforms: uniformsService,
+  calendarEvents: calendarEventsService
 };
