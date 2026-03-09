@@ -351,15 +351,45 @@ export function formatActionParams(actionType, params) {
   switch (actionType) {
     case ACTION_TYPES.ADD_TASK:
       if (params.title || params.text) details.push({ label: 'Title', value: params.title || params.text });
+      if (params.type) details.push({ label: 'Type', value: params.type });
       if (params.priority) details.push({ label: 'Priority', value: params.priority });
       if (params.dueDate || params.deadline) details.push({ label: 'Deadline', value: params.dueDate || params.deadline });
       if (params.className) details.push({ label: 'Class', value: params.className });
       if (params.description) details.push({ label: 'Description', value: params.description });
+      // Show links count or individual links
+      if (params.links && Array.isArray(params.links)) {
+        if (params.links.length > 0) {
+          details.push({ label: 'Links', value: `${params.links.length} link(s)` });
+        }
+      }
+      // Show files count or individual files
+      if (params.files && Array.isArray(params.files)) {
+        if (params.files.length > 0) {
+          details.push({ label: 'Files', value: `${params.files.length} file(s)` });
+        }
+      }
+      break;
+    case ACTION_TYPES.UPDATE_TASK:
+      if (params.taskId) details.push({ label: 'Task ID', value: params.taskId });
+      if (params.title || params.text) details.push({ label: 'Title', value: params.title || params.text });
+      if (params.type) details.push({ label: 'Type', value: params.type });
+      if (params.priority) details.push({ label: 'Priority', value: params.priority });
+      if (params.dueDate) details.push({ label: 'Deadline', value: params.dueDate });
+      if (params.description) details.push({ label: 'Description', value: params.description });
+      if (params.links && Array.isArray(params.links) && params.links.length > 0) {
+        details.push({ label: 'Links', value: `${params.links.length} link(s)` });
+      }
+      if (params.files && Array.isArray(params.files) && params.files.length > 0) {
+        details.push({ label: 'Files', value: `${params.files.length} file(s)` });
+      }
       break;
     case ACTION_TYPES.ADD_CLASS:
       if (params.name || params.title) details.push({ label: 'Name', value: params.name || params.title });
       if (params.teacher) details.push({ label: 'Teacher', value: params.teacher });
       if (params.room) details.push({ label: 'Room', value: params.room });
+      if (params.links && Array.isArray(params.links) && params.links.length > 0) {
+        details.push({ label: 'Links', value: params.links.map(l => l.url || l).join(', ') });
+      }
       break;
     case ACTION_TYPES.ADD_EVENT:
       if (params.title || params.name) details.push({ label: 'Title', value: params.title || params.name });
@@ -368,12 +398,12 @@ export function formatActionParams(actionType, params) {
       }
       if (params.endDate || params.until) details.push({ label: 'End', value: params.endDate || params.until });
       if (params.time) details.push({ label: 'Time', value: params.time });
+      if (params.description) details.push({ label: 'Description', value: params.description });
       break;
     case ACTION_TYPES.START_POMODORO_TIMER:
       details.push({ label: 'Mode', value: 'Focus Timer' });
       if (params.duration) details.push({ label: 'Duration', value: `${params.duration} minutes` });
       break;
-    case ACTION_TYPES.UPDATE_TASK:
     case ACTION_TYPES.COMPLETE_TASK:
     case ACTION_TYPES.DELETE_TASK:
       if (params.taskId) details.push({ label: 'Task ID', value: params.taskId });
@@ -383,6 +413,8 @@ export function formatActionParams(actionType, params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value && typeof value !== 'object') {
           details.push({ label: key, value: String(value) });
+        } else if (Array.isArray(value) && value.length > 0) {
+          details.push({ label: key, value: `${value.length} item(s)` });
         }
       });
   }

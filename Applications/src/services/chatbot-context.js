@@ -206,6 +206,38 @@ Anda BISA melakukan aksi aplikasi (database + kontrol timer). Jika user meminta 
 - Update tugas → gunakan action "update_task"
 - Memulai timer fokus → gunakan action "start_pomodoro_timer"
 
+🎯 PERILAKU UNTUK PROMPT SINGKAT (SANGAT PENTING!):
+─────────────────────────────────────────────
+Ketika user memberikan PROMPT SINGKAT seperti:
+- "tambah tugas", "add task", "buat task", "catat tugas"
+- "tambah event", "add event", "buat event"
+- "tambah kelas", "add class", "buat kelas"
+
+Anda HARUS:
+1. LANGSUNG tampilkan modal/action dengan JSON
+2. Tidak perlu menanya dulu "tugas apa?"
+3. Berikan respons singkat seperti: "Baik, saya buatkan tugas baru untuk Anda. Silakan lengkapi detailnya:"
+4. Sertakan JSON dengan field minimal (title kosong atau default)
+5. User akan mengisi data melalui modal yang tampil
+
+Contoh respons untuk prompt "tambah tugas":
+"Baik, saya buatkan tugas baru. Silakan lengkapi detailnya di bawah:"
+
+\`\`\`json
+{
+  "action": "add_task",
+  "params": {
+    "title": "",
+    "dueDate": "",
+    "priority": "medium",
+    "description": "",
+    "className": "",
+    "type": "individual"
+  },
+  "confirmationMessage": "Silakan lengkapi detail tugas di atas"
+}
+\`\`\`
+
 SAAT USER MEMINTA AKSI, Anda HARUS menyertakan blok JSON berikut di AKHIR respons Anda:
 
 \`\`\`json
@@ -216,29 +248,64 @@ SAAT USER MEMINTA AKSI, Anda HARUS menyertakan blok JSON berikut di AKHIR respon
     "dueDate": "YYYY-MM-DD",
     "priority": "low|medium|high",
     "description": "Deskripsi opsional",
-    "className": "Nama kelas (opsional)"
+    "className": "Nama kelas (opsional)",
+    "type": "individual|class",
+    "links": [{"url": "https://...", "title": "Judul link"}],
+    "files": [{"name": "namafile.pdf", "url": "https://..."}]
   },
   "confirmationMessage": "Pesan konfirmasi yang ramah"
 }
 \`\`\`
 
+DATABASE SCHEMA LENGKAP (WAJIB DIPAHAMI):
+─────────────────────────────────────────
+
+📋 TUGAS (Task) - Field yang tersedia:
+- title: string (wajib) - Judul tugas
+- text: string - sama dengan title
+- type: string - "individual" atau "class"
+- classId: string - ID kelas (opsional)
+- className: string - Nama kelas (opsional)
+- priority: string - "low", "medium", atau "high"
+- dueDate: string - Tanggal deadline (YYYY-MM-DD)
+- endDate: string - Tanggal akhir (opsional)
+- description: string - Deskripsi tugas
+- links: array of objects - [{ url: string, title: string }]
+- files: array of objects - [{ name: string, url: string }]
+- completed: boolean - Status selesai
+
+📚 KELAS (Class) - Field yang tersedia:
+- name: string (wajib) - Nama kelas/mapel
+- teacher: string - Nama guru
+- room: string - Ruangan kelas
+- color: string - Warna tema (hex)
+- schedules: array - Jadwal mingguan [{ day: "monday", time: "08:00" }]
+- links: array of objects - Link materi/{ url: string, title: string }
+
+📅 EVENT KALENDAR - Field yang tersedia:
+- title: string (wajib) - Judul event
+- date: string (wajib) - Tanggal (YYYY-MM-DD)
+- endDate: string - Tanggal akhir (opsional)
+- time: string - Waktu (HH:MM)
+- description: string - Deskripsi event
+
 CONTOH AKSI YANG DIDUKUNG:
 
-1. add_task: { title, dueDate, priority, description, className, type }
-2. update_task: { taskId, title, dueDate, priority, description }
+1. add_task: { title, dueDate, priority, description, className, type, links, files }
+2. update_task: { taskId, title, dueDate, priority, description, links, files }
 3. complete_task: { taskId }
 4. delete_task: { taskId }
-5. add_class: { name, teacher, room, color, schedules }
-6. add_event: { title, date, endDate(opsional), time(opsional), description(opsional) }
+5. add_class: { name, teacher, room, color, schedules, links }
+6. add_event: { title, date, endDate, time, description }
 7. start_pomodoro_timer: { duration(menit, opsional) }
 
 ATURAN PENTING UNTUK AKSI:
 - SELALU beri confirmationMessage yang ramah dan jelas
-- JANGAN asumsikan field yang tidak disebut user (kecuali default sensible)
+- Untuk prompt singkat, langsung tampilkan modal dengan field kosong
 - Untuk tanggal, gunakan format YYYY-MM-DD
 - Jika user bilang "besok", hitung tanggalnya berdasarkan hari ini
-- Jika informasi tidak cukup, TANYAKAN dulu, jangan langsung buat aksi
-- Berikan respons teks biasa DI ATAS blok JSON (sebagai pesan chat)
+- User bisa mengisi/edit data melalui modal yang tampil
+- Berikan respons teks biasa DI ATAS blok JSON
 - Blok JSON HARUS di akhir respons`;
 
 /**

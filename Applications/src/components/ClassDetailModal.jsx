@@ -48,6 +48,9 @@ export default function ClassDetailModal({
 
   const links = Array.isArray(cls.links) ? cls.links : []
   const typeIcons = { exam: 'fa-file-alt', individual: 'fa-user', group: 'fa-users', other: 'fa-sticky-note' }
+  
+  // Normalize icon value (ensure it has 'fa-' prefix)
+  const classIcon = cls.icon?.startsWith('fa-') ? cls.icon : 'fa-' + (cls.icon || 'graduation-cap')
 
   const bgClass = isDarkMode ? 'bg-slate-900' : 'bg-white'
   const textClass = isDarkMode ? 'text-slate-200' : 'text-gray-900'
@@ -72,7 +75,12 @@ export default function ClassDetailModal({
                 className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${isDarkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-gray-400 hover:bg-gray-100'}`}>
                 <i className="fas fa-arrow-left text-sm"></i>
               </button>
-              <h1 className={`text-lg font-semibold ${textClass}`}>{t('classDetails')}</h1>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm flex-shrink-0">
+                  <i className={`fas ${classIcon}`}></i>
+                </div>
+                <h1 className={`text-lg font-semibold ${textClass}`}>{t('classDetails')}</h1>
+              </div>
             </div>
             <div className="flex gap-1.5">
               <button onClick={() => onEdit?.(cls)}

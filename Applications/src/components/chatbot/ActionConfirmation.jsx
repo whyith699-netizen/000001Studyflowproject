@@ -8,28 +8,49 @@ import { userService } from '../../services/firestore-service';
 /**
  * Editable field component for action parameters
  */
-function EditableField({ label, value, isEditing, isDarkMode, inputDisabled, onValueChange, onToggleEdit, fieldKey, fieldType = 'text' }) {
+function EditableField({ label, value, isEditing, isDarkMode, inputDisabled, onValueChange, onToggleEdit, fieldKey, fieldType = 'text', options = [] }) {
   const detailLabelText = isDarkMode ? 'text-slate-400' : 'text-slate-700';
   const detailValueText = isDarkMode ? 'text-slate-200' : 'text-slate-900';
   const inputClass = isDarkMode
     ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-blue-500'
     : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500';
 
+  // Display value for array types (links, files)
+  const displayValue = Array.isArray(value)
+    ? value.length > 0
+      ? `${value.length} item(s)`
+      : ''
+    : value;
+
   return (
     <div className="flex items-center gap-2 text-xs group">
       <span className={`min-w-[72px] font-medium ${detailLabelText} shrink-0`}>{label}:</span>
       <div className="flex-1 flex items-center gap-1.5">
         {isEditing && !inputDisabled ? (
-          <input
-            type={fieldType}
-            value={value}
-            onChange={(e) => onValueChange(fieldKey, e.target.value)}
-            className={`w-full rounded-md border px-2 py-1 text-xs ${inputClass} focus:outline-none focus:ring-1`}
-            autoFocus
-          />
+          fieldType === 'select' ? (
+            <select
+              value={value || options[0]?.value}
+              onChange={(e) => onValueChange(fieldKey, e.target.value)}
+              className={`w-full rounded-md border px-2 py-1 text-xs ${inputClass} focus:outline-none focus:ring-1`}
+            >
+              {options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={fieldType}
+              value={value}
+              onChange={(e) => onValueChange(fieldKey, e.target.value)}
+              className={`w-full rounded-md border px-2 py-1 text-xs ${inputClass} focus:outline-none focus:ring-1`}
+              autoFocus
+            />
+          )
         ) : (
-          <span className={`break-all ${detailValueText} ${!value ? 'italic opacity-50' : ''}`}>
-            {value || `${label} belum diisi...`}
+          <span className={`break-all ${detailValueText} ${!displayValue ? 'italic opacity-50' : ''}`}>
+            {displayValue || `${label} belum diisi...`}
           </span>
         )}
         {!inputDisabled && (
@@ -84,6 +105,37 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
 
   const meta = ACTION_META[action.type] || { label: 'Aksi', icon: 'A', color: 'slate' };
 
+  // Determine input type and options based on field label (must be before useMemo)
+  function getFieldTypeForLabel(label) {
+    const lowerLabel = label.toLowerCase();
+
+    // Select dropdowns
+    if (lowerLabel === 'priority') {
+      return { type: 'select', options: [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' }
+      ]};
+    }
+    if (lowerLabel === 'type') {
+      return { type: 'select', options: [
+        { value: 'individual', label: 'Individual' },
+        { value: 'class', label: 'Class' }
+      ]};
+    }
+
+    // Date/time inputs
+    if (lowerLabel.includes('date') || lowerLabel.includes('deadline') || lowerLabel === 'end') {
+      return { type: 'date' };
+    }
+    if (lowerLabel.includes('time')) {
+      return { type: 'time' };
+    }
+
+    // Default text input
+    return { type: 'text' };
+  }
+
   // Get editable fields based on action type
   const editableFields = useMemo(() => {
     const fields = formatActionParams(action.type, action.params || {});
@@ -98,25 +150,18 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
     }
 
     // Map fields to editable format with field keys
-    return fields.map((field, idx) => ({
-      ...field,
-      key: `field_${idx}`,
-      editable: field.editable !== false,
-      fieldType: getFieldTypeForLabel(field.label),
-    }));
+    // Note: getFieldTypeForLabel must be defined before this useMemo or passed as dependency
+    return fields.map((field, idx) => {
+      const fieldConfig = getFieldTypeForLabel(field.label);
+      return {
+        ...field,
+        key: `field_${idx}`,
+        editable: field.editable !== false,
+        fieldType: typeof fieldConfig === 'object' ? fieldConfig.type : fieldConfig,
+        fieldOptions: typeof fieldConfig === 'object' ? fieldConfig.options : [],
+      };
+    });
   }, [action.type, action.params, userSettings]);
-
-  // Determine input type based on field label
-  function getFieldTypeForLabel(label) {
-    const lowerLabel = label.toLowerCase();
-    if (lowerLabel.includes('date') || lowerLabel.includes('deadline') || lowerLabel === 'end') {
-      return 'date';
-    }
-    if (lowerLabel.includes('time')) {
-      return 'time';
-    }
-    return 'text';
-  }
 
   // Handle field value change
   const handleValueChange = (fieldKey, newValue) => {
@@ -137,25 +182,48 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
     const labelToKeyMap = {
       [ACTION_TYPES.ADD_TASK]: {
         'Title': 'title',
+        'Type': 'type',
         'Priority': 'priority',
         'Deadline': 'dueDate',
         'Class': 'className',
         'Description': 'description',
+        'Links': 'links',
+        'Files': 'files',
+      },
+      [ACTION_TYPES.UPDATE_TASK]: {
+        'Task ID': 'taskId',
+        'Title': 'title',
+        'Type': 'type',
+        'Priority': 'priority',
+        'Deadline': 'dueDate',
+        'Description': 'description',
+        'Links': 'links',
+        'Files': 'files',
       },
       [ACTION_TYPES.ADD_CLASS]: {
         'Name': 'name',
         'Teacher': 'teacher',
         'Room': 'room',
+        'Links': 'links',
       },
       [ACTION_TYPES.ADD_EVENT]: {
         'Title': 'title',
         'Date': 'date',
         'End': 'endDate',
         'Time': 'time',
+        'Description': 'description',
       },
       [ACTION_TYPES.START_POMODORO_TIMER]: {
         'Duration': 'duration',
         'Mode': 'mode',
+      },
+      [ACTION_TYPES.COMPLETE_TASK]: {
+        'Task ID': 'taskId',
+        'Title': 'title',
+      },
+      [ACTION_TYPES.DELETE_TASK]: {
+        'Task ID': 'taskId',
+        'Title': 'title',
       },
     };
     return labelToKeyMap[actionType]?.[label] || label.toLowerCase();
@@ -278,6 +346,7 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
                 onToggleEdit={handleToggleEdit}
                 fieldKey={field.key}
                 fieldType={field.fieldType}
+                options={field.fieldOptions || []}
               />
             ))
           ) : (
