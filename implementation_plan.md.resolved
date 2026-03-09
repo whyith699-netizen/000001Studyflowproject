@@ -1,0 +1,200 @@
+# StudyFlow: Web App → Android Mobile Conversion
+
+## Background
+
+The web App ([App/](file:///d:/SECURE/000001Studyflowproject/App/src/App.jsx#15-85)) is a polished React+Vite dashboard with 8 screens, dark mode, bilingual i18n (EN/ID), and Firebase Firestore as the data layer. The existing Mobile app (`Mobile/`) is a Kotlin+Jetpack Compose project that has authentication, task/class CRUD, and basic Material3 UI — but the design is very different from the web App and everything is crammed into a single 2000-line [MainActivity.kt](file:///d:/SECURE/000001Studyflowproject/Mobile/app/src/main/java/com/studyflow/nativeapp/MainActivity.kt).
+
+**Goal**: Rewrite the Mobile app's UI to match the web App's design, adapted for a vertical mobile layout. Maintain the same data layer (Firestore direct access with Backend API fallback) and add missing features.
+
+## User Review Required
+
+> [!IMPORTANT]
+> This is a very large project covering **7 complete screen rewrites + architecture restructure + theme + i18n + dark mode**. Due to context limitations, I propose we implement this in **batches across multiple conversations**. This plan covers the full scope, but I recommend we start with **Phase 1-2** (architecture + theme + first 2-3 screens) and continue in follow-up conversations.
+
+> [!WARNING]
+> The current Mobile app uses a Backend API ([BackendRepository](file:///d:/SECURE/000001Studyflowproject/Mobile/app/src/main/java/com/studyflow/nativeapp/BackendRepository.kt#31-547)/Retrofit) with Firestore fallback. The web App uses **direct Firestore**. I will keep the existing data architecture (Backend API + Firestore fallback) since it already works and is battle-tested, rather than switching to pure Firestore client SDK.
+
+## Proposed Changes
+
+### Component 1: Project Architecture (Split Monolithic File)
+
+Split the 2000-line [MainActivity.kt](file:///d:/SECURE/000001Studyflowproject/Mobile/app/src/main/java/com/studyflow/nativeapp/MainActivity.kt) into a clean multi-file structure:
+
+```
+com/studyflow/app/
+├── MainActivity.kt          (entry point, auth state, setContent)
+├── theme/
+│   ├── Color.kt             (color palette matching web App)
+│   ├── Theme.kt             (Material3 theme, dark/light)
+│   └── Type.kt              (typography, Inter/Roboto font)
+├── navigation/
+│   └── AppNavigation.kt     (bottom nav + routes)
+├── i18n/
+│   └── Translations.kt      (EN/ID strings matching web App)
+├── data/
+│   ├── BackendApi.kt         (existing, unchanged)
+│   ├── BackendRepository.kt  (existing + add calendar/uniforms/sessions)
+│   ├── BackendErrorMapper.kt (existing, unchanged)
+│   ├── AuthErrorMapper.kt    (existing, unchanged)
+│   └── FirebaseInitializer.kt(existing, unchanged)
+├── screens/
+│   ├── LoginScreen.kt
+│   ├── DashboardScreen.kt
+│   ├── FocusModeScreen.kt
+│   ├── ScheduleScreen.kt
+│   ├── CalendarScreen.kt
+│   ├── ReportsScreen.kt
+│   └── SettingsScreen.kt
+└── components/
+    ├── StudyFlowCard.kt      (reusable card with dark mode)
+    ├── TaskCard.kt
+    ├── ClassCard.kt
+    ├── TimerWidget.kt
+    ├── WeeklyProgressChart.kt
+    └── BottomNavBar.kt
+```
+
+#### [MODIFY] [MainActivity.kt](file:///d:/SECURE/000001Studyflowproject/Mobile/app/src/main/java/com/studyflow/nativeapp/MainActivity.kt)
+- Strip down to only: Firebase init, auth state management, and `setContent { AppNavigation() }`
+- Move all composable screens to separate files
+- Move business logic to a ViewModel or keep in Activity with delegation
+
+---
+
+### Component 2: Theme & Design System
+
+Match the web App's color palette exactly:
+
+| Token | Light | Dark |
+|-------|-------|------|
+| Background | `#F8FAFC` (slate-50) | `#0f172a → #1e293b` gradient |
+| Card | `#FFFFFF` | `#1e293b` |
+| Card Border | `#F3F4F6` (gray-100) | `#334155` (slate-700) |
+| Primary Blue | `#3B82F6` | `#3B82F6` |
+| Primary Hover | `#2563EB` | `#2563EB` |
+| Text Primary | `#111827` (gray-900) | `#FFFFFF` |
+| Text Secondary | `#6B7280` (gray-500) | `#94A3B8` (slate-400) |
+| Green | `#22C55E` | `#22C55E` |
+| Orange | `#F97316` | `#F97316` |
+| Red | `#EF4444` | `#EF4444` |
+
+#### [NEW] `theme/Color.kt`
+#### [NEW] `theme/Theme.kt`  
+#### [NEW] `theme/Type.kt`
+
+---
+
+### Component 3: Navigation
+
+Replace the current enum-based tab switching with proper bottom navigation.
+
+**Bottom Nav Items** (matching web App sidebar):
+1. 🏠 Dashboard
+2. ⏱ Focus
+3. 📋 Schedule
+4. 📅 Calendar
+5. 📊 Reports
+
+Settings accessible via gear icon in header or profile section.
+
+#### [NEW] `navigation/AppNavigation.kt`
+
+---
+
+### Component 4: Screens (Vertical Mobile Layout)
+
+Each screen will adapt the web App's 3-column desktop layout to a **single-column vertical scroll** layout for mobile.
+
+#### [NEW] `screens/LoginScreen.kt`
+- Match web App login design: logo + title + email/password form + Google Sign-In
+- Gradient blue background
+- Centered card layout
+
+#### [NEW] `screens/DashboardScreen.kt`
+- **Header**: Welcome + streak + "New Task" button
+- **Clock & Date card** (scrolled, not pinned like web)
+- **Today's Uniform card**
+- **Today's Schedule card** (list of today's classes)
+- **Timer widget** (compact mode)
+- **Weekly Progress chart**
+- **Study Goals / Tasks list**
+- **Quote of the Day card** (dark gradient)
+
+#### [NEW] `screens/FocusModeScreen.kt`
+- **Header**: Focus Mode title + subtitle
+- **Full Timer** with Pomodoro/Short Break/Long Break tabs
+- **Daily Streak widget**
+- **Recent Sessions timeline**
+
+#### [NEW] `screens/ScheduleScreen.kt`
+- **Tab selector**: Classes | Exams | Uniforms
+- **Classes tab**: Grid/list of class cards with icons, days, room, links
+- **Add/Edit class modal**
+- **Uniforms tab**: Day-by-day uniform input
+
+#### [NEW] `screens/CalendarScreen.kt`
+- **Monthly calendar grid** view
+- **Event list** for selected day
+- **Add/Edit event modal**
+- **Roadmap tab**: 30-day upcoming events list
+
+#### [NEW] `screens/ReportsScreen.kt`
+- **Period selector**: This Week | This Month | All Time
+- **Stats cards**: Total Study Time, Sessions, Pomodoros, Avg/Day
+- **Daily Activity chart**
+
+#### [NEW] `screens/SettingsScreen.kt`
+- **Profile Info**: Display name edit
+- **Timer Settings**: Focus/Short Break/Long Break duration
+- **Language toggle**: EN/ID
+- **Dark Mode toggle**
+- **Danger Zone**: Sign Out, Delete All Data
+
+---
+
+### Component 5: i18n (Internationalization)
+
+#### [NEW] `i18n/Translations.kt`
+- Port all 200+ string keys from [App/src/i18n/translations.js](file:///d:/SECURE/000001Studyflowproject/App/src/i18n/translations.js)
+- Support EN and ID languages
+- Provide composable `LocalTranslations` context
+
+---
+
+### Component 6: Data Layer Additions
+
+#### [MODIFY] [BackendRepository.kt](file:///d:/SECURE/000001Studyflowproject/Mobile/app/src/main/java/com/studyflow/nativeapp/BackendRepository.kt)
+- Add `calendarEventsService`: CRUD for `calendarEvents` subcollection
+- Add `uniformsService`: Read/write `settings/uniforms` document  
+- Add `studySessionsService.addSession()`: Write new sessions + update streak
+- All via direct Firestore (matching web App's data structure)
+
+#### [MODIFY] [BackendApi.kt](file:///d:/SECURE/000001Studyflowproject/Mobile/app/src/main/java/com/studyflow/nativeapp/BackendApi.kt)
+- Add DTOs: `CalendarEventDto`, `UniformsDto`
+
+---
+
+## Verification Plan
+
+### Build Verification
+```
+cd d:\SECURE\000001Studyflowproject\Mobile
+.\gradlew assembleDebug
+```
+The app must compile successfully without errors.
+
+### Manual Testing
+Since this is a UI-focused rewrite, manual testing on an Android device or emulator is the primary verification method:
+
+1. **Login Screen**: Open app → should see styled login screen → sign in with email or Google → should navigate to Dashboard
+2. **Dashboard**: Verify welcome message, clock, today's schedule, timer widget, tasks, and quote card all render in vertical layout
+3. **Focus Mode**: Navigate to Focus tab → timer should display with Pomodoro controls → recent sessions list
+4. **Schedule**: Navigate to Schedule → switch between Classes/Exams/Uniforms tabs → add/edit/delete a class
+5. **Calendar**: Navigate to Calendar → monthly grid should display → add an event → verify it appears
+6. **Reports**: Navigate to Reports → stats cards and chart should render
+7. **Settings**: Navigate to Settings → change display name → toggle dark mode → toggle language
+8. **Dark Mode**: Toggle dark mode → all screens should switch to dark theme with correct colors
+9. **Language**: Toggle EN↔ID → all visible text should switch language
+
+> [!TIP]
+> The user should test on their actual Android device or an emulator. Build the APK with `gradlew assembleDebug` and install it.

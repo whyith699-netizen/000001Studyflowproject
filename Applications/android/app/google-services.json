@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "912149378367",
+    "firebase_url": "https://studydashboard-bd8f0-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "studydashboard-bd8f0",
+    "storage_bucket": "studydashboard-bd8f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:912149378367:android:3e18694b70b348ad6f4f8a",
+        "android_client_info": {
+          "package_name": "com.studyflow.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "912149378367-8so92cmkqb77v9mjju55r5sqevcts3h3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.studyflow.app",
+            "certificate_hash": "4e299551d2aaf7f4940ed8009bafef167f112e6a"
+          }
+        },
+        {
+          "client_id": "912149378367-lei8llrsc6p5b08b1ltih3bbl8krk33u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkI6gO38nNMvjQCGBiR7hINU4ZckNBsCY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "912149378367-lei8llrsc6p5b08b1ltih3bbl8krk33u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

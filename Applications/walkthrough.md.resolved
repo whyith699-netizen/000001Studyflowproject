@@ -1,0 +1,132 @@
+# Applications: Gemini Rate Limit Implementation Plan
+
+## Objective
+
+Prevent Gemini API overuse and make chatbot behavior predictable when quotas are hit by adding:
+- pre-request quota checks
+- per-model request tracking
+- model fallback
+- 429-aware retry with backoff
+- user-facing rate-limit feedback
+
+## Scope
+
+Files in `Applications/src`:
+- `config/chatbot-config.js`
+- `utils/rate-limiter.js`
+- `services/gemini-client.js`
+- `services/chatbot-service.js`
+- `components/chatbot/ChatWindow.jsx` (optional UX hardening)
+
+Out of scope:
+- backend-side centralized quota enforcement
+- per-user server quotas
+
+## Implementation Phases
+
+### Phase 1: Configuration Baseline
+
+Update `chatbot-config.js` with explicit rate-limit and retry settings:
+- define model chain (`id`, `rpm`, `rpd`, `label`)
+- define retry settings (`maxAttempts`, `baseDelayMs`, `maxDelayMs`, `cooldownMs`)
+- keep values aligned with currently used Gemini tier
+
+Acceptance criteria:
+- config contains all model limits and retry knobs in one place
+- no hardcoded limit values remain in service code
+
+### Phase 2: Client Rate Limiter
+
+Implement/verify `utils/rate-limiter.js`:
+- sliding-window tracking for RPM (60s) and RPD (24h)
+- per-model storage shape: `timestamps[]`, `cooldownUntil`
+- `canRequestModel(modelId, rpm, rpd)`
+- `recordRequest(modelId)`
+- `markCooldown(modelId, durationMs)`
+- `findAvailableModel(modelChain)`
+- `getRemainingQuota(modelChain)` and `getQuotaSummary()`
+- persist state to `localStorage`
+
+Acceptance criteria:
+- limiter blocks requests that exceed rpm/rpd
+- cooldown is respected after 429
+- state survives page refresh
+
+### Phase 3: Gemini Client Resilience
+
+Implement/verify `services/gemini-client.js`:
+- select first available model from chain
+- on 429:
+  - parse `Retry-After` header when present
+  - mark model cooldown
+  - immediately try next model
+- if last model still 429: retry with exponential backoff + jitter
+- return structured error fields:
+  - `isRateLimited`
+  - `retryAfterMs`
+  - `modelUsed` on success
+
+Acceptance criteria:
+- fallback happens without user-visible crash
+- last-model retries stop at configured max attempts
+- response payload always carries enough metadata for UI handling
+
+### Phase 4: Chatbot Service Integration
+
+Implement/verify `services/chatbot-service.js`:
+- pre-check model availability before calling Gemini
+- map rate-limit failures into user-safe error messages
+- expose `getRateLimitInfo()` for UI diagnostics
+
+Acceptance criteria:
+- service returns consistent `{ success, error, isRateLimited, retryAfterMs }`
+- no raw API error leaks directly to users
+
+### Phase 5: UX Handling (Recommended)
+
+Improve `components/chatbot/ChatWindow.jsx`:
+- detect `isRateLimited` state from service response
+- show cooldown-aware message with retry hint (seconds remaining)
+- disable send button briefly when `retryAfterMs > 0` (optional)
+
+Acceptance criteria:
+- users see actionable feedback when limited
+- repeated spam-clicking is reduced
+
+## Verification Plan
+
+## 1. Functional checks
+
+- Send normal messages until near quota and confirm successful responses.
+- Force RPM breach and confirm request is blocked before network call.
+- Simulate 429 from one model and confirm automatic fallback to next model.
+- Simulate 429 on final model and confirm backoff retry sequence.
+- Confirm response contains `isRateLimited` and `retryAfterMs` when limited.
+
+## 2. Persistence checks
+
+- Trigger quota usage, refresh app, confirm limiter state is retained.
+- Clear storage/reset limiter and confirm quotas reset correctly.
+
+## 3. Build checks
+
+Run:
+
+```bash
+cd Applications
+npm run build
+```
+
+Expected:
+- build exits with code 0
+- no runtime import/export errors from chatbot files
+
+## Rollout Notes
+
+- Start with conservative limits for free tier.
+- Monitor user-visible rate-limit frequency for 3-7 days.
+- Tune `modelChain` ordering and retry timings based on observed behavior.
+
+## Current Status (as of 2026-03-08)
+
+Core implementation is already present in the codebase and this plan now serves as the execution/verification checklist for stabilization and rollout.
