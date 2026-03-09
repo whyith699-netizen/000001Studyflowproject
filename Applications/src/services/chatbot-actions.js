@@ -271,10 +271,13 @@ async function executeDeleteTask(params) {
 async function executeAddClass(params) {
   const classData = {
     name: params.name || params.title,
-    teacher: params.teacher || '',
-    room: params.room || '',
+    icon: params.icon || '',
     color: params.color || '#4F46E5',
+    days: Array.isArray(params.days) ? params.days : [],
+    time: params.time || '',
+    room: params.room || '',
     schedules: Array.isArray(params.schedules) ? params.schedules : [],
+    links: Array.isArray(params.links) ? params.links : [],
   };
 
   if (!classData.name) {
@@ -384,11 +387,15 @@ export function formatActionParams(actionType, params) {
       }
       break;
     case ACTION_TYPES.ADD_CLASS:
-      if (params.name || params.title) details.push({ label: 'Name', value: params.name || params.title });
-      if (params.teacher) details.push({ label: 'Teacher', value: params.teacher });
-      if (params.room) details.push({ label: 'Room', value: params.room });
+      if (params.name || params.title) details.push({ label: 'Name', value: params.name || params.title, editable: true });
+      if (params.icon) details.push({ label: 'Icon', value: params.icon, editable: true });
+      if (params.color) details.push({ label: 'Color', value: params.color, editable: true });
+      if (params.days && Array.isArray(params.days)) details.push({ label: 'Days', value: params.days.join(', '), editable: true });
+      if (params.time) details.push({ label: 'Time', value: params.time, editable: true });
+      if (params.room) details.push({ label: 'Room', value: params.room, editable: true });
+      if (params.schedules && Array.isArray(params.schedules)) details.push({ label: 'Schedules', value: `${params.schedules.length} schedule(s)`, editable: true });
       if (params.links && Array.isArray(params.links) && params.links.length > 0) {
-        details.push({ label: 'Links', value: params.links.map(l => l.url || l).join(', ') });
+        details.push({ label: 'Links', value: `${params.links.length} link(s)`, editable: true });
       }
       break;
     case ACTION_TYPES.ADD_EVENT:

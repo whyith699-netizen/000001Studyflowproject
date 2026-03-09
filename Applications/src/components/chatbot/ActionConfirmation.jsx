@@ -27,7 +27,17 @@ function EditableField({ label, value, isEditing, isDarkMode, inputDisabled, onV
       <span className={`min-w-[72px] font-medium ${detailLabelText} shrink-0`}>{label}:</span>
       <div className="flex-1 flex items-center gap-1.5">
         {isEditing && !inputDisabled ? (
-          fieldType === 'select' ? (
+          fieldType === 'color' ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={value || '#4F46E5'}
+                onChange={(e) => onValueChange(fieldKey, e.target.value)}
+                className="h-8 w-14 rounded border cursor-pointer"
+              />
+              <span className={`text-xs ${detailValueText}`}>{value || '#4F46E5'}</span>
+            </div>
+          ) : fieldType === 'select' ? (
             <select
               value={value || options[0]?.value}
               onChange={(e) => onValueChange(fieldKey, e.target.value)}
@@ -124,6 +134,20 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
         { value: 'exam', label: 'Exam' }
       ]};
     }
+    if (lowerLabel === 'color') {
+      return { type: 'color' };
+    }
+    if (lowerLabel === 'days') {
+      return { type: 'select', options: [
+        { value: 'monday', label: 'Monday' },
+        { value: 'tuesday', label: 'Tuesday' },
+        { value: 'wednesday', label: 'Wednesday' },
+        { value: 'thursday', label: 'Thursday' },
+        { value: 'friday', label: 'Friday' },
+        { value: 'saturday', label: 'Saturday' },
+        { value: 'sunday', label: 'Sunday' }
+      ]};
+    }
 
     // Date/time inputs
     if (lowerLabel.includes('date') || lowerLabel.includes('deadline') || lowerLabel === 'end') {
@@ -203,8 +227,12 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
       },
       [ACTION_TYPES.ADD_CLASS]: {
         'Name': 'name',
-        'Teacher': 'teacher',
+        'Icon': 'icon',
+        'Color': 'color',
+        'Days': 'days',
+        'Time': 'time',
         'Room': 'room',
+        'Schedules': 'schedules',
         'Links': 'links',
       },
       [ACTION_TYPES.ADD_EVENT]: {

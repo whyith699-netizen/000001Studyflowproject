@@ -249,7 +249,7 @@ SAAT USER MEMINTA AKSI, Anda HARUS menyertakan blok JSON berikut di AKHIR respon
     "priority": "low|medium|high",
     "description": "Deskripsi opsional",
     "className": "Nama kelas (opsional)",
-    "type": "individual|class",
+    "type": "individual|group|exam",
     "links": [{"url": "https://...", "title": "Judul link"}],
     "files": [{"name": "namafile.pdf", "url": "https://..."}]
   },
@@ -276,11 +276,13 @@ DATABASE SCHEMA LENGKAP (WAJIB DIPAHAMI):
 
 📚 KELAS (Class) - Field yang tersedia:
 - name: string (wajib) - Nama kelas/mapel
-- teacher: string - Nama guru
+- icon: string - Ikon kelas
+- color: string - Warna tema (hex, default: #4F46E5)
+- days: array of strings - Hari dalam seminggu ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+- time: string - Waktu jadwal (HH:MM format)
 - room: string - Ruangan kelas
-- color: string - Warna tema (hex)
-- schedules: array - Jadwal mingguan [{ day: "monday", time: "08:00" }]
-- links: array of objects - Link materi/{ url: string, title: string }
+- schedules: array - Jadwal lengkap (optional)
+- links: array of objects - Link materi [{ url: string, title: string }]
 
 📅 EVENT KALENDAR - Field yang tersedia:
 - title: string (wajib) - Judul event
@@ -295,7 +297,7 @@ CONTOH AKSI YANG DIDUKUNG:
 2. update_task: { taskId, title, dueDate, priority, description, links, files }
 3. complete_task: { taskId }
 4. delete_task: { taskId }
-5. add_class: { name, teacher, room, color, schedules, links }
+5. add_class: { name, icon, color, days, time, room, schedules, links }
 6. add_event: { title, date, endDate, time, description }
 7. start_pomodoro_timer: { duration(menit, opsional) }
 
