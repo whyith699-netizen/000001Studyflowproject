@@ -232,7 +232,7 @@ Contoh respons untuk prompt "tambah tugas":
     "priority": "medium",
     "description": "",
     "className": "",
-    "type": "individual"
+    "type": "individual",
   },
   "confirmationMessage": "Silakan lengkapi detail tugas di atas"
 }
@@ -263,7 +263,7 @@ DATABASE SCHEMA LENGKAP (WAJIB DIPAHAMI):
 📋 TUGAS (Task) - Field yang tersedia:
 - title: string (wajib) - Judul tugas
 - text: string - sama dengan title
-- type: string - "individual" atau "class"
+- type: string - "individual", "group", atau "exam"
 - classId: string - ID kelas (opsional)
 - className: string - Nama kelas (opsional)
 - priority: string - "low", "medium", atau "high"

@@ -2,19 +2,25 @@ import { useState, useMemo, useEffect } from 'react'
 import { useLang } from '../contexts/LanguageContext'
 import ClassForm from './forms/ClassForm'
 
-export default function EditClassPage({ 
-  cls, 
-  isOpen, 
-  onClose, 
+// Normalize icon: remove 'fa-' prefix if present for consistency
+const normalizeIcon = (iconValue) => {
+  if (!iconValue) return 'graduation-cap';
+  return iconValue.startsWith('fa-') ? iconValue.slice(3) : iconValue;
+};
+
+export default function EditClassPage({
+  cls,
+  isOpen,
+  onClose,
   onSubmit,
   isSubmitting = false,
-  isDarkMode = false 
+  isDarkMode = false
 }) {
   const { t } = useLang()
 
   const [name, setName] = useState(cls?.name || '')
   const [room, setRoom] = useState(cls?.room || '')
-  const [icon, setIcon] = useState(cls?.icon || 'fa-graduation-cap')
+  const [icon, setIcon] = useState(() => normalizeIcon(cls?.icon))
   
   // Migrate old days+time to schedules format
   const [schedules, setSchedules] = useState(() => {
@@ -31,7 +37,7 @@ export default function EditClassPage({
     if (cls) {
       setName(cls.name || '')
       setRoom(cls.room || '')
-      setIcon(cls.icon || 'fa-graduation-cap')
+      setIcon(normalizeIcon(cls.icon))
       if (cls?.schedules?.length) {
         setSchedules(cls.schedules)
       } else if (cls?.days?.length) {

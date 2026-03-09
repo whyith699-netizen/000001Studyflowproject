@@ -120,7 +120,8 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
     if (lowerLabel === 'type') {
       return { type: 'select', options: [
         { value: 'individual', label: 'Individual' },
-        { value: 'class', label: 'Class' }
+        { value: 'group', label: 'Group' },
+        { value: 'exam', label: 'Exam' }
       ]};
     }
 

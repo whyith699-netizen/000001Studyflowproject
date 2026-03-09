@@ -150,7 +150,12 @@ function ClassForm({
 }, ref) {
   const [name, setName] = useState(initialValues.name || '');
   const [room, setRoom] = useState(initialValues.room || '');
-  const [icon, setIcon] = useState(initialValues.icon || 'fa-graduation-cap');
+  // Normalize icon: remove 'fa-' prefix if present for consistency
+  const normalizeIcon = (iconValue) => {
+    if (!iconValue) return 'graduation-cap';
+    return iconValue.startsWith('fa-') ? iconValue.slice(3) : iconValue;
+  };
+  const [icon, setIcon] = useState(normalizeIcon(initialValues.icon));
   const [schedules, setSchedules] = useState(toInitialSchedules(initialValues));
   const [links, setLinks] = useState(Array.isArray(initialValues.links) ? initialValues.links : []);
   const [newDay, setNewDay] = useState('monday');
