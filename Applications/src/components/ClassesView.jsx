@@ -78,7 +78,7 @@ const ClassesView = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center text-lg">
-                                            <i className={`fas ${cls.icon?.startsWith('fa-') ? cls.icon : 'fa-' + cls.icon || 'fa-graduation-cap'}`}></i>
+                                            <i className={`fas ${cls.icon && cls.icon.trim() ? (cls.icon.startsWith('fa-') ? cls.icon : `fa-${cls.icon}`) : 'fa-graduation-cap'}`}></i>
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold text-blue-600">{cls.name || "Untitled Class"}</h3>

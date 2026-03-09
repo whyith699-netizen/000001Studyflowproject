@@ -49,8 +49,11 @@ export default function ClassDetailModal({
   const links = Array.isArray(cls.links) ? cls.links : []
   const typeIcons = { exam: 'fa-file-alt', individual: 'fa-user', group: 'fa-users', other: 'fa-sticky-note' }
 
-  // Normalize icon value - match ClassesView.jsx logic
-  const classIcon = cls.icon?.startsWith('fa-') ? cls.icon : (cls.icon ? `fa-${cls.icon}` : 'fa-graduation-cap')
+  // Normalize icon value - icons are stored WITHOUT 'fa-' prefix in database
+  // Handle: null, undefined, empty string, icon with/without 'fa-' prefix
+  const classIcon = cls.icon && cls.icon.trim()
+    ? (cls.icon.startsWith('fa-') ? cls.icon : `fa-${cls.icon}`)
+    : 'fa-graduation-cap'
 
   const bgClass = isDarkMode ? 'bg-slate-900' : 'bg-white'
   const textClass = isDarkMode ? 'text-slate-200' : 'text-gray-900'
