@@ -16,17 +16,29 @@ function getDaysUntilDue(dueDate) {
   const due = new Date(dueDate)
   due.setHours(0, 0, 0, 0)
   return Math.ceil((due - today) / (1000 * 60 * 60 * 24))
+  }
 }
 
-export default function ClassDetailModal({ 
-  cls, 
-  tasks, 
-  isOpen, 
-  onClose, 
-  onEdit, 
+// Helper function to get icon class - same logic as ClassesView
+function getClassIcon(icon) {
+  if (!icon || !icon.trim()) {
+    return 'fa-graduation-cap'
+  }
+  if (icon.startsWith('fa-')) {
+    return icon
+  }
+  return `fa-${icon}`
+}
+
+export default function ClassDetailModal({
+  cls,
+  tasks,
+  isOpen,
+  onClose,
+  onEdit,
   onDelete,
   onTaskClick,
-  isDarkMode = false 
+  isDarkMode = false
 }) {
   const { t } = useLang()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -49,11 +61,8 @@ export default function ClassDetailModal({
   const links = Array.isArray(cls.links) ? cls.links : []
   const typeIcons = { exam: 'fa-file-alt', individual: 'fa-user', group: 'fa-users', other: 'fa-sticky-note' }
 
-  // Normalize icon value - icons are stored WITHOUT 'fa-' prefix in database
-  // Handle: null, undefined, empty string, icon with/without 'fa-' prefix
-  const classIcon = cls.icon && cls.icon.trim()
-    ? (cls.icon.startsWith('fa-') ? cls.icon : `fa-${cls.icon}`)
-    : 'fa-graduation-cap'
+  // Use helper function for consistent icon rendering
+  const classIcon = getClassIcon(cls.icon)
 
   const bgClass = isDarkMode ? 'bg-slate-900' : 'bg-white'
   const textClass = isDarkMode ? 'text-slate-200' : 'text-gray-900'
@@ -66,8 +75,8 @@ export default function ClassDetailModal({
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3" onClick={onClose}>
         <div className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm"></div>
-        
-        <div 
+
+        <div
           className={`relative ${bgClass} rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col border ${borderClass} overflow-hidden`}
           onClick={e => e.stopPropagation()}
         >
@@ -120,7 +129,7 @@ export default function ClassDetailModal({
                   ))}
                 </div>
               )}
-              
+
               {cls.room && (
                 <p className={`text-sm ${textMutedClass} mt-2`}>
                   <i className="fas fa-map-marker-alt mr-1.5"></i>{cls.room}
@@ -149,8 +158,8 @@ export default function ClassDetailModal({
                   return (
                     <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
                       className={`flex items-center gap-3 p-3 rounded-lg transition-all no-underline border border-transparent ${
-                        isDarkMode 
-                          ? 'bg-slate-800 hover:bg-slate-700 hover:border-slate-600' 
+                        isDarkMode
+                          ? 'bg-slate-800 hover:bg-slate-700 hover:border-slate-600'
                           : 'bg-white hover:bg-gray-50 hover:border-gray-200'
                       }`}>
                       {faviconSrc ? (
@@ -185,23 +194,23 @@ export default function ClassDetailModal({
                 {classTasks.length > 0 ? classTasks.map(task => {
                   const taskType = task.type || 'other'
                   const daysUntil = task.dueDate && !task.completed ? getDaysUntilDue(task.dueDate) : null
-                  const dueClass = daysUntil !== null 
-                    ? (daysUntil <= 1 ? 'text-red-500 bg-red-50 dark:bg-red-900/20' 
-                      : daysUntil <= 3 ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' 
-                      : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20') 
+                  const dueClass = daysUntil !== null
+                    ? (daysUntil <= 1 ? 'text-red-500 bg-red-50 dark:bg-red-900/20'
+                      : daysUntil <= 3 ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20'
+                      : 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20')
                     : ''
-                  const dueText = daysUntil !== null 
-                    ? (daysUntil < 0 ? t('overdue') 
-                      : daysUntil === 0 ? t('dueToday') 
-                      : daysUntil === 1 ? t('dueTomorrow') 
-                      : t('dueInDays', { n: daysUntil })) 
+                  const dueText = daysUntil !== null
+                    ? (daysUntil < 0 ? t('overdue')
+                      : daysUntil === 0 ? t('dueToday')
+                      : daysUntil === 1 ? t('dueTomorrow')
+                      : t('dueInDays', { n: daysUntil }))
                     : ''
 
                   return (
                     <div key={task.id} onClick={() => onTaskClick?.(task)}
                       className={`flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer border border-transparent ${
-                        isDarkMode 
-                          ? 'bg-slate-800 hover:bg-slate-700 hover:border-slate-600' 
+                        isDarkMode
+                          ? 'bg-slate-800 hover:bg-slate-700 hover:border-slate-600'
                           : 'bg-white hover:bg-gray-50 hover:border-gray-200'
                       }`}>
                       {/* Type icon */}
@@ -211,8 +220,8 @@ export default function ClassDetailModal({
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className={`text-sm font-medium truncate ${
-                          task.completed 
-                            ? 'line-through opacity-50 text-gray-400 dark:text-white/30' 
+                          task.completed
+                            ? 'line-through opacity-50 text-gray-400 dark:text-white/30'
                             : textClass
                         }`}>
                           {task.title || 'Untitled Task'}
@@ -250,8 +259,8 @@ export default function ClassDetailModal({
             <div className={`flex gap-2 p-4 border-t ${borderClass}`}>
               <button onClick={() => setShowDeleteConfirm(false)}
                 className={`flex-1 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                  isDarkMode 
-                    ? 'border-slate-600 text-slate-300 hover:bg-slate-800' 
+                  isDarkMode
+                    ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}>
                 {t('cancel')}
