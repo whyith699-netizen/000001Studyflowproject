@@ -1,283 +1,21 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Check, Loader2, X, Edit3, Check as CheckIcon } from 'lucide-react';
-import { ACTION_STATUS, ACTION_META, formatActionParams, ACTION_TYPES } from '../../services/chatbot-actions';
+import React from 'react';
+import { Check, Loader2, X } from 'lucide-react';
+import { ACTION_STATUS, ACTION_META, formatActionParams } from '../../services/chatbot-actions';
 import { useDarkMode } from '../../contexts/DarkModeContext';
 import { useLang } from '../../contexts/LanguageContext';
-import { userService } from '../../services/firestore-service';
-
-/**
- * Editable field component for action parameters
- */
-function EditableField({ label, value, isEditing, isDarkMode, inputDisabled, onValueChange, onToggleEdit, fieldKey, fieldType = 'text', options = [] }) {
-  const detailLabelText = isDarkMode ? 'text-slate-400' : 'text-slate-700';
-  const detailValueText = isDarkMode ? 'text-slate-200' : 'text-slate-900';
-  const inputClass = isDarkMode
-    ? 'bg-slate-800 border-slate-600 text-slate-100 focus:border-blue-500 focus:ring-blue-500'
-    : 'bg-white border-slate-300 text-slate-900 focus:border-blue-500 focus:ring-blue-500';
-
-  // Display value for array types (links, files)
-  const displayValue = Array.isArray(value)
-    ? value.length > 0
-      ? `${value.length} item(s)`
-      : ''
-    : value;
-
-  return (
-    <div className="flex items-center gap-2 text-xs group">
-      <span className={`min-w-[72px] font-medium ${detailLabelText} shrink-0`}>{label}:</span>
-      <div className="flex-1 flex items-center gap-1.5">
-        {isEditing && !inputDisabled ? (
-          fieldType === 'color' ? (
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={value || '#4F46E5'}
-                onChange={(e) => onValueChange(fieldKey, e.target.value)}
-                className="h-8 w-14 rounded border cursor-pointer"
-              />
-              <span className={`text-xs ${detailValueText}`}>{value || '#4F46E5'}</span>
-            </div>
-          ) : fieldType === 'select' ? (
-            <select
-              value={value || options[0]?.value}
-              onChange={(e) => onValueChange(fieldKey, e.target.value)}
-              className={`w-full rounded-md border px-2 py-1 text-xs ${inputClass} focus:outline-none focus:ring-1`}
-            >
-              {options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type={fieldType}
-              value={value}
-              onChange={(e) => onValueChange(fieldKey, e.target.value)}
-              className={`w-full rounded-md border px-2 py-1 text-xs ${inputClass} focus:outline-none focus:ring-1`}
-              autoFocus
-            />
-          )
-        ) : (
-          <span className={`break-all ${detailValueText} ${!displayValue ? 'italic opacity-50' : ''}`}>
-            {displayValue || `${label} belum diisi...`}
-          </span>
-        )}
-        {!inputDisabled && (
-          <button
-            type="button"
-            onClick={() => onToggleEdit(fieldKey)}
-            className={`shrink-0 rounded p-0.5 transition-opacity ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${isDarkMode ? 'hover:bg-slate-700 text-slate-400 hover:text-slate-200' : 'hover:bg-slate-200 text-slate-500 hover:text-slate-700'}`}
-            title={isEditing ? 'Done editing' : 'Edit field'}
-          >
-            {isEditing ? <CheckIcon className="h-3 w-3" /> : <Edit3 className="h-3 w-3" />}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Action Confirmation Card
  * Displays action details and allows user to confirm or cancel before execution.
- * Users can edit the action parameters before confirming.
  */
 function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm, onCancel, resultMessage }) {
   const { isDarkMode } = useDarkMode();
   const { t } = useLang();
-  const [userSettings, setUserSettings] = useState(null);
-  const [editedParams, setEditedParams] = useState({});
-  const [editingField, setEditingField] = useState(null);
-
-  // Fetch user settings for pomodoro duration
-  useEffect(() => {
-    if (action?.type === ACTION_TYPES.START_POMODORO_TIMER) {
-      userService.getProfile().then((profile) => {
-        if (profile?.settings) {
-          setUserSettings(profile.settings);
-        }
-      }).catch(() => {
-        // Use defaults if fetch fails
-        setUserSettings({ pomodoroMinutes: 25 });
-      });
-    }
-  }, [action?.type]);
-
-  // Initialize edited params when action changes
-  useEffect(() => {
-    if (action?.params) {
-      setEditedParams({ ...action.params });
-    }
-  }, [action]);
 
   if (!action) return null;
 
   const meta = ACTION_META[action.type] || { label: 'Aksi', icon: 'A', color: 'slate' };
-
-  // Determine input type and options based on field label (must be before useMemo)
-  function getFieldTypeForLabel(label) {
-    const lowerLabel = label.toLowerCase();
-
-    // Select dropdowns
-    if (lowerLabel === 'priority') {
-      return { type: 'select', options: [
-        { value: 'low', label: 'Low' },
-        { value: 'medium', label: 'Medium' },
-        { value: 'high', label: 'High' }
-      ]};
-    }
-    if (lowerLabel === 'type') {
-      return { type: 'select', options: [
-        { value: 'individual', label: 'Individual' },
-        { value: 'group', label: 'Group' },
-        { value: 'exam', label: 'Exam' }
-      ]};
-    }
-    if (lowerLabel === 'color') {
-      return { type: 'color' };
-    }
-    if (lowerLabel === 'days') {
-      return { type: 'select', options: [
-        { value: 'monday', label: 'Monday' },
-        { value: 'tuesday', label: 'Tuesday' },
-        { value: 'wednesday', label: 'Wednesday' },
-        { value: 'thursday', label: 'Thursday' },
-        { value: 'friday', label: 'Friday' },
-        { value: 'saturday', label: 'Saturday' },
-        { value: 'sunday', label: 'Sunday' }
-      ]};
-    }
-
-    // Date/time inputs
-    if (lowerLabel.includes('date') || lowerLabel.includes('deadline') || lowerLabel === 'end') {
-      return { type: 'date' };
-    }
-    if (lowerLabel.includes('time')) {
-      return { type: 'time' };
-    }
-
-    // Default text input
-    return { type: 'text' };
-  }
-
-  // Get editable fields based on action type
-  const editableFields = useMemo(() => {
-    const fields = formatActionParams(action.type, action.params || {});
-
-    // For pomodoro, override duration with user settings
-    if (action.type === ACTION_TYPES.START_POMODORO_TIMER && userSettings?.pomodoroMinutes) {
-      const durationField = fields.find(f => f.label === 'Duration');
-      if (durationField) {
-        durationField.value = `${userSettings.pomodoroMinutes} minutes`;
-        durationField.editable = false; // Duration is not editable for pomodoro
-      }
-    }
-
-    // Map fields to editable format with field keys
-    // Note: getFieldTypeForLabel must be defined before this useMemo or passed as dependency
-    return fields.map((field, idx) => {
-      const fieldConfig = getFieldTypeForLabel(field.label);
-      return {
-        ...field,
-        key: `field_${idx}`,
-        editable: field.editable !== false,
-        fieldType: typeof fieldConfig === 'object' ? fieldConfig.type : fieldConfig,
-        fieldOptions: typeof fieldConfig === 'object' ? fieldConfig.options : [],
-      };
-    });
-  }, [action.type, action.params, userSettings]);
-
-  // Handle field value change
-  const handleValueChange = (fieldKey, newValue) => {
-    const fieldIndex = editableFields.findIndex(f => f.key === fieldKey);
-    if (fieldIndex === -1) return;
-
-    const field = editableFields[fieldIndex];
-    const paramKey = getParamKeyFromLabel(field.label, action.type);
-
-    setEditedParams(prev => ({
-      ...prev,
-      [paramKey]: newValue
-    }));
-  };
-
-  // Map display label back to param key
-  const getParamKeyFromLabel = (label, actionType) => {
-    const labelToKeyMap = {
-      [ACTION_TYPES.ADD_TASK]: {
-        'Title': 'title',
-        'Type': 'type',
-        'Priority': 'priority',
-        'Deadline': 'dueDate',
-        'Class': 'className',
-        'Description': 'description',
-        'Links': 'links',
-        'Files': 'files',
-      },
-      [ACTION_TYPES.UPDATE_TASK]: {
-        'Task ID': 'taskId',
-        'Title': 'title',
-        'Type': 'type',
-        'Priority': 'priority',
-        'Deadline': 'dueDate',
-        'Description': 'description',
-        'Links': 'links',
-        'Files': 'files',
-      },
-      [ACTION_TYPES.ADD_CLASS]: {
-        'Name': 'name',
-        'Icon': 'icon',
-        'Color': 'color',
-        'Days': 'days',
-        'Time': 'time',
-        'Room': 'room',
-        'Schedules': 'schedules',
-        'Links': 'links',
-      },
-      [ACTION_TYPES.ADD_EVENT]: {
-        'Title': 'title',
-        'Date': 'date',
-        'End': 'endDate',
-        'Time': 'time',
-        'Description': 'description',
-      },
-      [ACTION_TYPES.START_POMODORO_TIMER]: {
-        'Duration': 'duration',
-        'Mode': 'mode',
-      },
-      [ACTION_TYPES.COMPLETE_TASK]: {
-        'Task ID': 'taskId',
-        'Title': 'title',
-      },
-      [ACTION_TYPES.DELETE_TASK]: {
-        'Task ID': 'taskId',
-        'Title': 'title',
-      },
-    };
-    return labelToKeyMap[actionType]?.[label] || label.toLowerCase();
-  };
-
-  // Toggle edit mode for a field
-  const handleToggleEdit = (fieldKey) => {
-    setEditingField(prev => prev === fieldKey ? null : fieldKey);
-  };
-
-  // Handle confirm with edited params
-  const handleConfirm = () => {
-    // Create updated action with edited params
-    const updatedAction = {
-      ...action,
-      params: {
-        ...action.params,
-        ...editedParams
-      }
-    };
-    onConfirm(updatedAction);
-  };
-
-  // Check if any fields are empty
-  const hasEmptyFields = editableFields.some(f => !f.value && f.editable);
+  const details = formatActionParams(action.type, action.params || {});
 
   const colorMap = {
     blue: {
@@ -359,42 +97,14 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
         )}
       </div>
 
-      {editableFields.length > 0 && (
+      {details.length > 0 && (
         <div className={`space-y-1.5 px-3 py-2 ${status === ACTION_STATUS.PENDING ? 'pb-3' : ''}`}>
-          {status === ACTION_STATUS.PENDING ? (
-            // Editable fields for pending actions
-            editableFields.map((field) => (
-              <EditableField
-                key={field.key}
-                label={field.label}
-                value={editedParams[getParamKeyFromLabel(field.label, action.type)] || field.value || ''}
-                isEditing={editingField === field.key}
-                isDarkMode={isDarkMode}
-                inputDisabled={status !== ACTION_STATUS.PENDING}
-                onValueChange={handleValueChange}
-                onToggleEdit={handleToggleEdit}
-                fieldKey={field.key}
-                fieldType={field.fieldType}
-                options={field.fieldOptions || []}
-              />
-            ))
-          ) : (
-            // Read-only display for executed/cancelled actions
-            editableFields.map((field, idx) => (
-              <div key={idx} className="flex items-baseline gap-2 text-xs">
-                <span className={`min-w-[72px] font-medium ${detailLabelText}`}>{field.label}:</span>
-                <span className={`break-all ${detailValueText}`}>{field.value || '-'}</span>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Edit hint for pending actions */}
-      {status === ACTION_STATUS.PENDING && editableFields.some(f => f.editable) && (
-        <div className={`px-3 pb-2 text-xs ${detailLabelText} flex items-center gap-1.5`}>
-          <Edit3 className="h-3 w-3" />
-          <span>Klik ikon edit untuk mengubah data yang kosong atau salah</span>
+          {details.map((detail, idx) => (
+            <div key={idx} className="flex items-baseline gap-2 text-xs">
+              <span className={`min-w-[72px] font-medium ${detailLabelText}`}>{detail.label}:</span>
+              <span className={`break-all ${detailValueText}`}>{detail.value || '-'}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -420,10 +130,8 @@ function ActionConfirmation({ action, status = ACTION_STATUS.PENDING, onConfirm,
         <div className={`flex items-center gap-2 border-t px-3 py-2 ${dividerClass}`}>
           <button
             type="button"
-            onClick={handleConfirm}
-            disabled={hasEmptyFields}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors ${colors.btn} ${hasEmptyFields ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={hasEmptyFields ? 'Isi semua data yang kosong terlebih dahulu' : 'Konfirmasi aksi'}
+            onClick={() => onConfirm(action)}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors ${colors.btn}`}
           >
             <Check className="h-3 w-3" />
             {t('confirm') || 'Confirm'}
