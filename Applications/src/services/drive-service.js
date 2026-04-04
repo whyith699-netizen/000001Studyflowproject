@@ -148,7 +148,7 @@ export const driveService = {
     return payload.data;
   },
 
-  async connectFolder(folderLinkOrId, forceReAuth = false) {
+  async connectFolder(folderLinkOrId, forceReAuth = true) {
     const payload = await request("/v1/drive/connect", {
       method: "POST",
       body: { folderLinkOrId, forceReAuth },

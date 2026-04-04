@@ -67,6 +67,10 @@ function isNativePlatform() {
   return Capacitor.isNativePlatform();
 }
 
+function shouldPreferFirebasePopup() {
+  return isBrowser() && !isNativePlatform();
+}
+
 async function ensureNativeGoogleInitialized() {
   if (!isNativePlatform()) return;
   if (nativeInitPromise) {
@@ -155,11 +159,13 @@ function shouldFallbackToFirebaseGooglePopup(error) {
   );
 }
 
-async function requestFirebaseGoogleToken({ forceReAuth = false } = {}) {
+async function requestFirebaseGoogleToken() {
   const provider = new GoogleAuthProvider();
   GOOGLE_SCOPES.forEach((scope) => provider.addScope(scope));
   provider.setCustomParameters({
-    prompt: forceReAuth ? "consent select_account" : "consent",
+    // Always show the picker for interactive Drive auth so users can switch
+    // accounts instead of silently reusing the last Google session.
+    prompt: "consent select_account",
   });
 
   const result = await signInWithPopup(auth, provider);
@@ -225,6 +231,10 @@ export async function getGoogleDriveAccessToken({
     return requestNativeGoogleToken({ forceRefresh, forceReAuth });
   }
 
+  if (interactive && shouldPreferFirebasePopup()) {
+    return requestFirebaseGoogleToken();
+  }
+
   try {
     await loadGoogleIdentityScript();
 
@@ -245,7 +255,7 @@ export async function getGoogleDriveAccessToken({
     return tokenCache.accessToken;
   } catch (error) {
     if (interactive && shouldFallbackToFirebaseGooglePopup(error)) {
-      return requestFirebaseGoogleToken({ forceReAuth });
+      return requestFirebaseGoogleToken();
     }
     throw error;
   }
