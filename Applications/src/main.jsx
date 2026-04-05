@@ -4,6 +4,21 @@ import './index.css'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 
+const baseUrl = import.meta.env.BASE_URL || '/'
+const pwaDisabledForBuild = import.meta.env.MODE === 'ghpages'
+
+if (pwaDisabledForBuild && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        if (registration.scope.includes(baseUrl)) {
+          registration.unregister().catch(() => {})
+        }
+      })
+    }).catch(() => {})
+  })
+}
+
 // Apply theme class before React mounts to avoid light flash on refresh/load.
 try {
   const saved = localStorage.getItem('darkMode')

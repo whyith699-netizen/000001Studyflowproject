@@ -12,7 +12,10 @@ import {
   studySessionsService,
   userService,
 } from "../services/firestore-service";
-import { notifyTimerComplete } from "../services/notification-service";
+import {
+  notifyTimerComplete,
+  playTimerTransitionCue,
+} from "../services/notification-service";
 
 const TimerContext = createContext(null);
 
@@ -59,9 +62,7 @@ const normalizeTimerSettings = (settings = {}) => ({
   autoStartBreaks: Boolean(settings.autoStartBreaks),
   soundEnabled: settings.soundEnabled !== false,
   breakTypePreference:
-    settings.breakTypePreference === "longBreak"
-      ? "longBreak"
-      : "shortBreak",
+    settings.breakTypePreference === "longBreak" ? "longBreak" : "shortBreak",
 });
 
 const buildTimerModes = (settings) => ({
@@ -70,6 +71,100 @@ const buildTimerModes = (settings) => ({
   longBreak: { label: "Long Break", time: settings.longBreakMinutes * 60 },
 });
 const CHATBOT_START_POMODORO_EVENT = "studyflow:chatbot:start-pomodoro";
+const resolvePopupUrl = () => {
+  const baseUrl = import.meta.env.BASE_URL || "/";
+  const popupUrl = new URL(baseUrl, window.location.origin);
+  popupUrl.searchParams.set("miniTimer", "1");
+  return popupUrl.toString();
+};
+
+export const useTimerPopup = () => {
+  const ctx = useContext(TimerContext);
+  if (!ctx) throw new Error("useTimerPopup must be used within TimerProvider");
+  const broadcastTimerState = useCallback(() => {
+    const popup = window.__pomodoroPopup;
+    if (!popup || popup.closed) return;
+
+    popup.postMessage(
+      {
+        type: "SYNC_TIMER_STATE",
+        payload: {
+          isRunning: ctx.isRunning,
+          timeLeft: ctx.timeLeft,
+          timerMode: ctx.timerMode,
+          elapsedSeconds: ctx.elapsedSeconds,
+          currentModeDuration: ctx.currentModeDuration,
+          hours: ctx.hours,
+          minutes: ctx.minutes,
+          seconds: ctx.seconds,
+        },
+      },
+      window.location.origin,
+    );
+  }, [
+    ctx.elapsedSeconds,
+    ctx.hours,
+    ctx.isRunning,
+    ctx.minutes,
+    ctx.seconds,
+    ctx.timeLeft,
+    ctx.timerMode,
+    ctx.currentModeDuration,
+  ]);
+
+  const openMiniTimerPopup = useCallback(() => {
+    // Check if popup is already open
+    if (window.__pomodoroPopup && !window.__pomodoroPopup.closed) {
+      window.__pomodoroPopup.focus();
+      broadcastTimerState();
+      return;
+    }
+
+    const popupWidth = 400;
+    const popupHeight = 520;
+    const screenX = window.screenX + (window.innerWidth - popupWidth) / 2;
+    const screenY = window.screenY + (window.innerHeight - popupHeight) / 2;
+
+    const popup = window.open(
+      resolvePopupUrl(),
+      "PomodoroTimer",
+      `width=${popupWidth},height=${popupHeight},left=${screenX},top=${screenY},resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no`,
+    );
+
+    if (popup) {
+      window.__pomodoroPopup = popup;
+
+      // Send initial timer state to popup after it loads
+      const checkPopupLoaded = setInterval(() => {
+        try {
+          if (popup && !popup.closed) {
+            broadcastTimerState();
+            clearInterval(checkPopupLoaded);
+          }
+        } catch {
+          // Popup might be closed
+          clearInterval(checkPopupLoaded);
+        }
+      }, 200);
+
+      // Clean up when popup closes
+      const checkClosed = setInterval(() => {
+        if (popup && popup.closed) {
+          window.__pomodoroPopup = null;
+          clearInterval(checkClosed);
+        }
+      }, 500);
+    } else {
+      console.error("Failed to open popup. Please allow popups for this site.");
+    }
+  }, [broadcastTimerState]);
+
+  useEffect(() => {
+    broadcastTimerState();
+  }, [broadcastTimerState]);
+
+  return { ...ctx, openMiniTimerPopup };
+};
 
 export const TimerProvider = ({ children }) => {
   const initialSettings = normalizeTimerSettings(DEFAULT_TIMER_SETTINGS);
@@ -91,6 +186,7 @@ export const TimerProvider = ({ children }) => {
   );
 
   const intervalRef = useRef(null);
+  const transitionCueTimeoutRef = useRef(null);
   const isRunningRef = useRef(isRunning);
   const timerModeRef = useRef(timerMode);
   const pendingBreakChoiceRef = useRef(pendingBreakChoice);
@@ -182,6 +278,36 @@ export const TimerProvider = ({ children }) => {
     }
   }, []);
 
+  const clearTransitionCueTimeout = useCallback(() => {
+    if (transitionCueTimeoutRef.current) {
+      clearTimeout(transitionCueTimeoutRef.current);
+      transitionCueTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleTransitionCue = useCallback(
+    (eventType, delayMs = 0) => {
+      clearTransitionCueTimeout();
+      if (!timerSettings.soundEnabled) return;
+
+      transitionCueTimeoutRef.current = setTimeout(() => {
+        playTimerTransitionCue({
+          eventType,
+          soundEnabled: true,
+        }).catch((error) => {
+          console.error("Failed to play timer transition cue:", error);
+        });
+        transitionCueTimeoutRef.current = null;
+      }, delayMs);
+    },
+    [clearTransitionCueTimeout, timerSettings.soundEnabled],
+  );
+
+  useEffect(
+    () => () => clearTransitionCueTimeout(),
+    [clearTransitionCueTimeout],
+  );
+
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -215,6 +341,7 @@ export const TimerProvider = ({ children }) => {
         title: "Timer Complete!",
         body: `${completedLabel} session finished.`,
         soundEnabled: timerSettings.soundEnabled,
+        tone: "complete",
       });
 
       if (completedMode === "pomodoro") {
@@ -228,6 +355,7 @@ export const TimerProvider = ({ children }) => {
           setTimeLeft(breakDuration);
           setSessionStartTime(Date.now());
           setIsRunning(true);
+          scheduleTransitionCue("break-start", 850);
         } else {
           setPendingBreakChoice(true);
         }
@@ -250,7 +378,9 @@ export const TimerProvider = ({ children }) => {
     currentModeDuration,
     savePomodoroSession,
     timerSettings.autoStartBreaks,
+    timerSettings.breakTypePreference,
     timerSettings.soundEnabled,
+    scheduleTransitionCue,
   ]);
 
   const switchMode = useCallback(
@@ -258,6 +388,7 @@ export const TimerProvider = ({ children }) => {
       if (!timerModes[newMode]) return;
 
       clearTimerInterval();
+      clearTransitionCueTimeout();
       const modeDuration = timerModes[newMode].time;
       setPendingBreakChoice(false);
       setTimerMode(newMode);
@@ -266,7 +397,7 @@ export const TimerProvider = ({ children }) => {
       setIsRunning(false);
       setSessionStartTime(null);
     },
-    [timerModes, clearTimerInterval],
+    [timerModes, clearTimerInterval, clearTransitionCueTimeout],
   );
 
   const toggleTimer = useCallback(() => {
@@ -288,6 +419,7 @@ export const TimerProvider = ({ children }) => {
     }
 
     clearTimerInterval();
+    clearTransitionCueTimeout();
     const resetDuration =
       timerModes[timerMode]?.time || timerModes.pomodoro.time;
     setPendingBreakChoice(false);
@@ -302,12 +434,14 @@ export const TimerProvider = ({ children }) => {
     timerModes,
     savePomodoroSession,
     clearTimerInterval,
+    clearTransitionCueTimeout,
     pendingBreakChoice,
   ]);
 
   const startPomodoroFromChatbot = useCallback(() => {
     const pomodoroDuration = timerModes.pomodoro.time;
     clearTimerInterval();
+    clearTransitionCueTimeout();
     setPendingBreakChoice(false);
     setTimerMode("pomodoro");
     setCurrentModeDuration(pomodoroDuration);
@@ -318,7 +452,7 @@ export const TimerProvider = ({ children }) => {
       setSessionStartTime(Date.now());
       setIsRunning(true);
     });
-  }, [timerModes, clearTimerInterval]);
+  }, [timerModes, clearTimerInterval, clearTransitionCueTimeout]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -343,26 +477,97 @@ export const TimerProvider = ({ children }) => {
       if (!duration) return;
 
       clearTimerInterval();
+      clearTransitionCueTimeout();
       setPendingBreakChoice(false);
       setTimerMode(mode);
       setCurrentModeDuration(duration);
       setTimeLeft(duration);
       setSessionStartTime(Date.now());
       setIsRunning(true);
+      scheduleTransitionCue("break-start");
     },
-    [timerModes, clearTimerInterval],
+    [
+      timerModes,
+      clearTimerInterval,
+      clearTransitionCueTimeout,
+      scheduleTransitionCue,
+    ],
   );
 
   const dismissBreakChoice = useCallback(() => {
     const pomodoroDuration = timerModes.pomodoro.time;
     clearTimerInterval();
+    clearTransitionCueTimeout();
     setPendingBreakChoice(false);
     setTimerMode("pomodoro");
     setCurrentModeDuration(pomodoroDuration);
     setTimeLeft(pomodoroDuration);
     setSessionStartTime(null);
     setIsRunning(false);
-  }, [timerModes, clearTimerInterval]);
+  }, [timerModes, clearTimerInterval, clearTransitionCueTimeout]);
+
+  const syncTimerStateToRequester = useCallback((sourceWindow) => {
+    if (!sourceWindow || sourceWindow.closed) return;
+
+    sourceWindow.postMessage(
+      {
+        type: "SYNC_TIMER_STATE",
+        payload: {
+          isRunning,
+          timeLeft,
+          timerMode,
+          elapsedSeconds,
+          currentModeDuration,
+          hours,
+          minutes,
+          seconds,
+        },
+      },
+      window.location.origin,
+    );
+  }, [
+    currentModeDuration,
+    elapsedSeconds,
+    hours,
+    isRunning,
+    minutes,
+    seconds,
+    timeLeft,
+    timerMode,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleWindowMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+
+      switch (event.data?.type) {
+        case "REQUEST_TIMER_STATE":
+          syncTimerStateToRequester(event.source);
+          break;
+        case "START_TIMER":
+          if (!isRunning) toggleTimer();
+          break;
+        case "PAUSE_TIMER":
+          if (isRunning) toggleTimer();
+          break;
+        case "RESET_TIMER":
+          resetTimer();
+          break;
+        case "SWITCH_MODE":
+          if (event.data?.payload?.mode) {
+            switchMode(event.data.payload.mode);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("message", handleWindowMessage);
+    return () => window.removeEventListener("message", handleWindowMessage);
+  }, [isRunning, resetTimer, switchMode, syncTimerStateToRequester, toggleTimer]);
 
   return (
     <TimerContext.Provider
@@ -379,6 +584,7 @@ export const TimerProvider = ({ children }) => {
         seconds,
         liveElapsedMinutes,
         elapsedSeconds,
+        currentModeDuration,
         timerModes,
         switchMode,
         toggleTimer,

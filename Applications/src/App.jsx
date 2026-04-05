@@ -1,42 +1,54 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { DarkModeProvider } from './contexts/DarkModeContext';
-import { LanguageProvider } from './contexts/LanguageContext';
-import { TimerProvider } from './contexts/TimerContext';
-import { SidebarCollapseProvider } from './contexts/SidebarCollapseContext';
-import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext';
-import Login from './components/Login';
-import Dashboard from './components/Dashboard';
-import FocusMode from './components/FocusMode';
-import CoursesPage from './components/CoursesPage';
-import TasksPage from './components/TasksPage';
-import SchedulePage from './components/SchedulePage';
-import ReportsPage from './components/ReportsPage';
-import SettingsPage from './components/SettingsPage';
-import CalendarPage from './components/CalendarPage';
-import NotesPage from './components/NotesPage';
-import PrivateRoute from './components/PrivateRoute';
-import MobileReminderSync from './components/MobileReminderSync';
-import ChatbotWidget from './components/chatbot/ChatbotWidget';
-import { isNativePlatform, isNotesFeatureEnabled } from './config/featureFlags';
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { DarkModeProvider } from "./contexts/DarkModeContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
+import { TimerProvider } from "./contexts/TimerContext";
+import { SidebarCollapseProvider } from "./contexts/SidebarCollapseContext";
+import { ConfirmDialogProvider } from "./contexts/ConfirmDialogContext";
+import Login from "./components/Login";
+import Dashboard from "./components/Dashboard";
+import FocusMode from "./components/FocusMode";
+import MiniTimerPopup from "./components/MiniTimerPopup";
+import CoursesPage from "./components/CoursesPage";
+import TasksPage from "./components/TasksPage";
+import SchedulePage from "./components/SchedulePage";
+import ReportsPage from "./components/ReportsPage";
+import SettingsPage from "./components/SettingsPage";
+import CalendarPage from "./components/CalendarPage";
+import NotesPage from "./components/NotesPage";
+import ToolsPage from "./components/ToolsPage";
+import PrivateRoute from "./components/PrivateRoute";
+import MobileReminderSync from "./components/MobileReminderSync";
+import ChatbotWidget from "./components/chatbot/ChatbotWidget";
+import { isNativePlatform, isNotesFeatureEnabled } from "./config/featureFlags";
 
 const normalizeRouterBase = (baseUrl) => {
-  if (!baseUrl || baseUrl === './' || baseUrl === '/') return '/';
+  if (!baseUrl || baseUrl === "./" || baseUrl === "/") return "/";
 
-  let normalized = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  if (!normalized.startsWith('/')) normalized = `/${normalized}`;
-  return normalized || '/';
+  let normalized = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  if (!normalized.startsWith("/")) normalized = `/${normalized}`;
+  return normalized || "/";
 };
 
-const basename = isNativePlatform ? '/' : normalizeRouterBase(import.meta.env.BASE_URL);
+const basename = isNativePlatform
+  ? "/"
+  : normalizeRouterBase(import.meta.env.BASE_URL);
 
 function App() {
+  const popupMode =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("miniTimer") === "1";
+
   return (
     <LanguageProvider>
       <DarkModeProvider>
         <TimerProvider>
           <SidebarCollapseProvider>
             <ConfirmDialogProvider>
+              {popupMode ? (
+                <MiniTimerPopup />
+              ) : (
+                <>
               <MobileReminderSync />
               <BrowserRouter basename={basename}>
                 <Routes>
@@ -56,6 +68,10 @@ function App() {
                         <FocusMode />
                       </PrivateRoute>
                     }
+                  />
+                  <Route
+                    path="/focus-popup"
+                    element={<MiniTimerPopup />}
                   />
                   <Route
                     path="/courses"
@@ -107,7 +123,10 @@ function App() {
                       }
                     />
                   ) : (
-                    <Route path="/notes" element={<Navigate to="/dashboard" replace />} />
+                    <Route
+                      path="/notes"
+                      element={<Navigate to="/dashboard" replace />}
+                    />
                   )}
                   <Route
                     path="/settings"
@@ -117,11 +136,21 @@ function App() {
                       </PrivateRoute>
                     }
                   />
+                  <Route
+                    path="/tools"
+                    element={
+                      <PrivateRoute>
+                        <ToolsPage />
+                      </PrivateRoute>
+                    }
+                  />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
                 {/* Chatbot Widget - Available on all authenticated pages */}
                 <ChatbotWidget />
               </BrowserRouter>
+                </>
+              )}
             </ConfirmDialogProvider>
           </SidebarCollapseProvider>
         </TimerProvider>
