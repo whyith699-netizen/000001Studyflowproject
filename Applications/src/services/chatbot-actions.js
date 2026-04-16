@@ -7,7 +7,6 @@ import {
   tasksService,
   classesService,
   calendarEventsService,
-  userService,
 } from './firestore-service';
 
 export const ACTION_TYPES = {

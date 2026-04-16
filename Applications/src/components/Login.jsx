@@ -183,15 +183,22 @@ const Login = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-4">
           <div
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
+            className={`w-full max-w-[8.5rem] sm:max-w-[9.5rem] rounded-3xl p-2 shadow-lg ${
               isDarkMode
-                ? "sf-accent-btn shadow-blue-500/25"
-                : "bg-blue-600 shadow-blue-600/30"
+                ? "bg-white/95 shadow-blue-500/20 ring-1 ring-white/10"
+                : "bg-white shadow-blue-600/15"
             }`}
           >
-            <span className="material-symbols-outlined text-4xl text-white">
-              school
-            </span>
+            <img
+              src="/StudyFlow_logo.jpg"
+              alt="Logo Study Flow dengan tanda centang panah biru dan topi wisuda"
+              width="1280"
+              height="698"
+              className="block h-auto w-full object-contain"
+              loading="eager"
+              decoding="async"
+              fetchPriority="high"
+            />
           </div>
         </div>
         <h2

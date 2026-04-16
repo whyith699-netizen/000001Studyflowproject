@@ -11,7 +11,7 @@ const GOOGLE_SCOPES = [
 const GOOGLE_SCOPE = GOOGLE_SCOPES.join(" ");
 
 const FALLBACK_CLIENT_ID =
-  "912149378367-lei8llrsc6p5b08b1ltih3bbl8krk33u.apps.googleusercontent.com";
+  "912149378367-bcfpe80oogfmpbb16skohkv0f2be2rpk.apps.googleusercontent.com";
 const TOKEN_CACHE_KEY = "studyflow_google_drive_token_v1";
 
 let gisLoader = null;

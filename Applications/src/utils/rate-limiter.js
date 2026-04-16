@@ -204,7 +204,6 @@ export function getQuotaSummary() {
   let nextAvailableIn = 0;
   if (available.length === 0) {
     // Find the model that will be available soonest
-    const state = loadState();
     const chain = CHATBOT_CONFIG.modelChain;
     let minWait = Infinity;
     for (const m of chain) {

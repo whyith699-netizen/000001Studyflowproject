@@ -126,7 +126,10 @@ const ReportsPage = () => {
     <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'sf-dark-shell' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       <Sidebar user={user} />
       
-      <main className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0">
+      <main
+        className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
+      >
         <div className="flex-1 w-full px-4 py-3 md:px-6 md:py-4 flex flex-col gap-3">
           {/* Header */}
           <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>

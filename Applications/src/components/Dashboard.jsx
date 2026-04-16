@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { auth } from "../firebase-config";
 import {
   tasksService,
@@ -8,11 +8,13 @@ import {
 } from "../services/firestore-service";
 import { useDarkMode } from "../contexts/DarkModeContext";
 import { useLang } from "../contexts/LanguageContext";
+import { useTimerPopup } from "../contexts/TimerContext";
 import Sidebar from "./Sidebar";
 import Timer from "./Timer";
 import WeeklyProgress from "./WeeklyProgress";
 import StudyGoals from "./StudyGoals";
 import TaskForm from "./forms/TaskForm";
+import ClassDetailModal from "./ClassDetailModal";
 import { getQuoteOfTheDay } from "../utils/quotes";
 
 const DAYS_MAP = [
@@ -52,8 +54,10 @@ const Dashboard = () => {
   const user = auth.currentUser;
   const { isDarkMode } = useDarkMode();
   const { t } = useLang();
+  const { openMiniTimerPopup } = useTimerPopup();
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [streak, setStreak] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [uniforms, setUniforms] = useState({});
@@ -61,6 +65,8 @@ const Dashboard = () => {
   const [showStreakClaimModal, setShowStreakClaimModal] = useState(false);
   const [isClaimingStreak, setIsClaimingStreak] = useState(false);
   const [dailyQuote, setDailyQuote] = useState({ text: "", author: "" });
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [showClassDetailModal, setShowClassDetailModal] = useState(false);
 
   // Live clock
   useEffect(() => {
@@ -76,6 +82,9 @@ const Dashboard = () => {
   useEffect(() => {
     const unsubClasses = classesService.subscribeToClasses((fetchedClasses) => {
       setClasses(fetchedClasses);
+    });
+    const unsubTasks = tasksService.subscribeToTasks((fetchedTasks) => {
+      setTasks(fetchedTasks);
     });
 
     const unsubUniforms = uniformsService.subscribeToUniforms((data) => {
@@ -99,9 +108,20 @@ const Dashboard = () => {
 
     return () => {
       unsubClasses();
+      unsubTasks();
       unsubUniforms();
     };
   }, []);
+
+  const handleOpenClassDetail = (cls) => {
+    setSelectedClass(cls);
+    setShowClassDetailModal(true);
+  };
+
+  const handleCloseClassDetail = () => {
+    setShowClassDetailModal(false);
+    setSelectedClass(null);
+  };
 
   // Derived data
   const todayKey = DAYS_MAP[currentTime.getDay()];
@@ -168,8 +188,8 @@ const Dashboard = () => {
       <main
         className="flex-1 flex flex-col h-full overflow-y-auto md:pb-0"
         style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'max(0px, env(safe-area-inset-bottom))'
+          paddingTop: "calc(env(safe-area-inset-top) + 12px)",
+          paddingBottom: "max(0px, env(safe-area-inset-bottom))",
         }}
       >
         <div className="flex-1 w-full px-4 py-3 pb-[20rem] md:px-6 md:py-4 md:pb-0 flex flex-col gap-3 md:h-full">
@@ -308,9 +328,11 @@ const Dashboard = () => {
                 {todayClasses.length > 0 ? (
                   <div className="flex flex-col gap-1.5">
                     {todayClasses.map((cls) => (
-                      <div
+                      <button
+                        type="button"
                         key={cls.id}
-                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${isDarkMode ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-50 hover:bg-gray-100"}`}
+                        onClick={() => handleOpenClassDetail(cls)}
+                        className={`w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left ${isDarkMode ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-50 hover:bg-gray-100"}`}
                       >
                         <div
                           className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${isDarkMode ? "bg-blue-900/30" : "bg-blue-50"}`}
@@ -324,7 +346,10 @@ const Dashboard = () => {
                         >
                           {cls.name}
                         </p>
-                      </div>
+                        <i
+                          className={`fas fa-chevron-right ml-auto text-xs ${isDarkMode ? "text-slate-500" : "text-gray-400"}`}
+                        ></i>
+                      </button>
                     ))}
                   </div>
                 ) : (
@@ -338,9 +363,9 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* CENTER COLUMN â€” Timer & Progress */}
+            {/* CENTER COLUMN — Timer & Progress */}
             <div className="lg:col-span-6 flex flex-col gap-3">
-              <Timer mode="compact" />
+              <Timer mode="compact" onPopup={openMiniTimerPopup} />
               <div className="flex-1 min-h-0">
                 <WeeklyProgress />
               </div>
@@ -389,7 +414,9 @@ const Dashboard = () => {
           <div
             className={`w-full max-w-sm rounded-3xl border p-0 shadow-2xl overflow-hidden ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
           >
-            <div className={`p-5 relative ${isDarkMode ? "sf-dark-elevated" : "bg-gradient-to-br from-blue-50 to-emerald-50"}`}>
+            <div
+              className={`p-5 relative ${isDarkMode ? "sf-dark-elevated" : "bg-gradient-to-br from-blue-50 to-emerald-50"}`}
+            >
               <div
                 className={`absolute -top-5 -right-5 w-24 h-24 rounded-full blur-2xl ${
                   isDarkMode ? "bg-blue-500/15" : "bg-blue-500/15"
@@ -405,7 +432,9 @@ const Dashboard = () => {
                 <div
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode ? "sf-accent-soft" : "bg-white"}`}
                 >
-                  <i className={`fas fa-trophy ${isDarkMode ? "sf-accent-text" : "text-blue-500"}`}></i>
+                  <i
+                    className={`fas fa-trophy ${isDarkMode ? "sf-accent-text" : "text-blue-500"}`}
+                  ></i>
                 </div>
                 <div>
                   <h3
@@ -421,15 +450,23 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className={`relative z-10 mt-4 rounded-2xl border p-3 ${isDarkMode ? "border-slate-700 bg-slate-900/40" : "border-white bg-white/70"}`}>
-                <p className={`text-xs uppercase tracking-wider mb-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}>
+              <div
+                className={`relative z-10 mt-4 rounded-2xl border p-3 ${isDarkMode ? "border-slate-700 bg-slate-900/40" : "border-white bg-white/70"}`}
+              >
+                <p
+                  className={`text-xs uppercase tracking-wider mb-1 ${isDarkMode ? "text-slate-400" : "text-gray-500"}`}
+                >
                   {t("studyStreak")}
                 </p>
                 <div className="flex items-end gap-2">
-                  <span className={`text-4xl font-black leading-none ${isDarkMode ? "text-white" : "text-gray-900"}`}>
+                  <span
+                    className={`text-4xl font-black leading-none ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                  >
                     {streak}
                   </span>
-                  <span className={`text-sm mb-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}>
+                  <span
+                    className={`text-sm mb-1 ${isDarkMode ? "text-slate-300" : "text-gray-600"}`}
+                  >
                     {t("days")}
                   </span>
                 </div>
@@ -437,7 +474,9 @@ const Dashboard = () => {
             </div>
 
             <div className="px-5 pb-5">
-              <div className={`rounded-xl p-3 mt-3 ${isDarkMode ? "bg-slate-800" : "bg-gray-50"}`}>
+              <div
+                className={`rounded-xl p-3 mt-3 ${isDarkMode ? "bg-slate-800" : "bg-gray-50"}`}
+              >
                 <div className="flex gap-1.5">
                   {[...Array(7)].map((_, i) => (
                     <div
@@ -510,6 +549,16 @@ const Dashboard = () => {
             />
           </div>
         </div>
+      )}
+
+      {showClassDetailModal && selectedClass && (
+        <ClassDetailModal
+          cls={selectedClass}
+          tasks={tasks}
+          isOpen={showClassDetailModal}
+          onClose={handleCloseClassDetail}
+          isDarkMode={isDarkMode}
+        />
       )}
     </div>
   );

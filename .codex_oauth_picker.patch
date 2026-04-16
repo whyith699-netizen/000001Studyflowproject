@@ -1,0 +1,55 @@
+diff --git a/Applications/src/services/drive-service.js b/Applications/src/services/drive-service.js
+--- a/Applications/src/services/drive-service.js
++++ b/Applications/src/services/drive-service.js
+@@ -151,4 +151,4 @@ export const driveService = {
+-  async connectFolder(folderLinkOrId, forceReAuth = false) {
++  async connectFolder(folderLinkOrId, forceReAuth = true) {
+     const payload = await request("/v1/drive/connect", {
+       method: "POST",
+       body: { folderLinkOrId, forceReAuth },
+diff --git a/Applications/src/services/google-drive-oauth-service.js b/Applications/src/services/google-drive-oauth-service.js
+--- a/Applications/src/services/google-drive-oauth-service.js
++++ b/Applications/src/services/google-drive-oauth-service.js
+@@ -66,5 +66,9 @@ function isNativePlatform() {
+   return Capacitor.isNativePlatform();
+ }
+ 
++function shouldPreferFirebasePopup() {
++  return isBrowser() && !isNativePlatform();
++}
++
+ async function ensureNativeGoogleInitialized() {
+   if (!isNativePlatform()) return;
+   if (nativeInitPromise) {
+@@ -157,10 +161,12 @@ function shouldFallbackToFirebaseGooglePopup(error) {
+ }
+ 
+-async function requestFirebaseGoogleToken({ forceReAuth = false } = {}) {
++async function requestFirebaseGoogleToken() {
+   const provider = new GoogleAuthProvider();
+   GOOGLE_SCOPES.forEach((scope) => provider.addScope(scope));
+   provider.setCustomParameters({
+-    prompt: forceReAuth ? "consent select_account" : "consent",
++    // Always show the picker for interactive Drive auth so users can switch
++    // accounts instead of silently reusing the last Google session.
++    prompt: "consent select_account",
+   });
+ 
+   const result = await signInWithPopup(auth, provider);
+@@ -228,5 +234,9 @@ export async function getGoogleDriveAccessToken({
+   if (isNativePlatform()) {
+     return requestNativeGoogleToken({ forceRefresh, forceReAuth });
+   }
++
++  if (interactive && shouldPreferFirebasePopup()) {
++    return requestFirebaseGoogleToken();
++  }
+ 
+   try {
+@@ -246,5 +256,5 @@ export async function getGoogleDriveAccessToken({
+     return tokenCache.accessToken;
+   } catch (error) {
+     if (interactive && shouldFallbackToFirebaseGooglePopup(error)) {
+-      return requestFirebaseGoogleToken({ forceReAuth });
++      return requestFirebaseGoogleToken();
+     }

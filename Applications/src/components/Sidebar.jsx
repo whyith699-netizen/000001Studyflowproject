@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase-config';
@@ -28,6 +28,15 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
     }
   };
 
+  const handleOpenChatbot = () => {
+    setShowMoreMenu(false);
+    window.dispatchEvent(
+      new CustomEvent('studyflow:chatbot:open', {
+        detail: { source: 'mobile-bottom-nav' },
+      })
+    );
+  };
+
     const navItems = useMemo(
     () => {
       const items = [
@@ -38,6 +47,7 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
         { path: '/calendar', icon: 'fa-calendar-days', label: t('calendarTitle') },
         { path: '/reports', icon: 'fa-chart-bar', label: t('reports') },
         { path: '/settings', icon: 'fa-cog', label: t('settings') },
+        { path: '/tools', icon: 'fa-toolbox', label: t('toolsMenu') },
       ];
 
       if (isNotesFeatureEnabled) {
@@ -48,26 +58,29 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
     },
     [t]
   );
-  const primaryMobileItems = useMemo(
-    () => navItems.filter((item) => ['/dashboard', '/focus', '/tasks'].includes(item.path)),
+  const leftMobileItems = useMemo(
+    () => navItems.filter((item) => ['/dashboard', '/schedule'].includes(item.path)),
     [navItems]
   );
-  const leftMobileItems = useMemo(() => primaryMobileItems.slice(0, 2), [primaryMobileItems]);
-  const rightMobileItems = useMemo(() => primaryMobileItems.slice(2), [primaryMobileItems]);
+  const rightMobileItems = useMemo(
+    () => navItems.filter((item) => ['/tasks', '/calendar'].includes(item.path)),
+    [navItems]
+  );
 
   const moreMobileItems = useMemo(
     () => {
       const preferredOrder = isNotesFeatureEnabled
-        ? ['/notes', '/schedule', '/calendar', '/reports', '/settings']
-        : ['/schedule', '/calendar', '/reports', '/settings'];
+        ? ['/notes', '/reports', '/settings', '/tools']
+        : ['/reports', '/settings', '/tools'];
       return navItems
-        .filter((item) => !['/dashboard', '/focus', '/tasks'].includes(item.path))
+        .filter((item) => !['/dashboard', '/schedule', '/tasks', '/calendar', '/focus'].includes(item.path))
         .sort((a, b) => preferredOrder.indexOf(a.path) - preferredOrder.indexOf(b.path));
     },
     [navItems]
   );
 
   const isMoreActive = moreMobileItems.some((item) => item.path === location.pathname);
+  const isFocusActive = location.pathname === '/focus';
 
   return (
     <>
@@ -217,11 +230,38 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
 
       {showMoreMenu && (
         <div
-          className={`md:hidden fixed inset-x-2 z-50 max-h-[56vh] overflow-y-auto rounded-xl border p-2 shadow-xl ${
+          className={`md:hidden fixed right-3 z-50 max-h-[56vh] w-[min(260px,calc(100vw-24px))] overflow-y-auto rounded-2xl border p-2 shadow-xl animate-slide-up ${
             isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
           }`}
-          style={{ bottom: 'calc(64px + env(safe-area-inset-bottom) + 8px)' }}
+          style={{ bottom: 'calc(64px + env(safe-area-inset-bottom) + 60px)' }}
         >
+          <div className="mb-2 flex items-center justify-between px-2 pt-1">
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${
+                isDarkMode ? 'text-slate-400' : 'text-gray-400'
+              }`}>
+                More
+              </p>
+              <p className={`text-sm font-semibold ${
+                isDarkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Quick actions
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowMoreMenu(false)}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                isDarkMode
+                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+              aria-label="Close more menu"
+            >
+              <i className="fas fa-times text-sm"></i>
+            </button>
+          </div>
+
           <div className="flex flex-col gap-1">
             {moreMobileItems.map((item) => (
               <NavLink
@@ -282,6 +322,53 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
         </div>
       )}
 
+      <button
+        type="button"
+        onClick={() => setShowMoreMenu((prev) => !prev)}
+        className={`md:hidden fixed right-3 z-50 flex items-center gap-2 rounded-full border px-3 py-2 shadow-lg transition-all duration-300 ease-out active:scale-95 ${
+          showMoreMenu || isMoreActive
+            ? isDarkMode
+              ? 'border-blue-500/40 bg-blue-900/40 text-blue-300'
+              : 'border-blue-200 bg-blue-50 text-blue-600'
+            : isDarkMode
+              ? 'border-slate-700 bg-slate-900/95 text-slate-300'
+              : 'border-gray-200 bg-white/95 text-gray-600'
+        }`}
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom) + 16px)' }}
+        aria-label="Open more menu"
+      >
+        <span className="text-xs font-semibold">More</span>
+        <span className={`flex items-center justify-center transition-transform duration-300 ease-out ${
+          showMoreMenu ? 'rotate-180' : 'rotate-0'
+        }`}>
+          <i className="fas fa-chevron-up text-xs"></i>
+        </span>
+      </button>
+
+      <NavLink
+        to="/focus"
+        className={`md:hidden fixed left-3 z-50 flex items-center gap-2 rounded-full border px-2 py-2 shadow-lg transition-all active:scale-95 ${
+          isFocusActive
+            ? 'border-cyan-300/30 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_16px_30px_rgba(37,99,235,0.34)]'
+            : isDarkMode
+              ? 'border-slate-700 bg-gradient-to-r from-slate-900 to-slate-800 text-slate-100 shadow-[0_14px_26px_rgba(2,6,23,0.34)]'
+              : 'border-blue-100 bg-gradient-to-r from-white to-blue-50 text-slate-700 shadow-[0_14px_26px_rgba(59,130,246,0.16)]'
+        }`}
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom) + 16px)' }}
+        aria-label="Open focus mode"
+      >
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full ${
+          isFocusActive
+            ? 'bg-white/20 text-white'
+            : isDarkMode
+              ? 'bg-blue-500/15 text-blue-300'
+              : 'bg-blue-100 text-blue-600'
+        }`}>
+          <i className="fas fa-clock text-[11px]"></i>
+        </span>
+        <span className="pr-1 text-xs font-semibold tracking-[0.01em]">Focus</span>
+      </NavLink>
+
       <nav
         className={`md:hidden fixed inset-x-0 bottom-0 z-40 border-t ${
           isDarkMode ? 'bg-slate-900/95 border-slate-700' : 'bg-white/95 border-gray-200'
@@ -312,7 +399,21 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
             ))}
           </div>
 
-          <div className="w-[88px] flex-shrink-0" aria-hidden="true" />
+          <div className="w-[88px] flex-shrink-0 flex justify-center">
+            <button
+              type="button"
+              onClick={handleOpenChatbot}
+              className={`-mt-5 h-14 w-14 rounded-full border-4 flex items-center justify-center shadow-lg transition-all active:scale-95 ${
+                isDarkMode
+                  ? 'border-slate-900 bg-blue-500 text-white'
+                  : 'border-white bg-blue-600 text-white'
+              }`}
+              aria-label="Open chatbot"
+              title="Chat Bot"
+            >
+              <i className="fas fa-robot text-lg"></i>
+            </button>
+          </div>
 
           <div className="flex min-w-0 flex-1 items-stretch gap-0.5">
             {rightMobileItems.map((item) => (
@@ -335,25 +436,6 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
                 <span className="text-[10px] leading-none text-center whitespace-nowrap">{item.label}</span>
               </NavLink>
             ))}
-
-            <button
-              type="button"
-              onClick={() => setShowMoreMenu((prev) => !prev)}
-              className={`flex min-w-[64px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1 py-1.5 transition-all ${
-                showMoreMenu || isMoreActive
-                  ? isDarkMode
-                    ? 'bg-blue-900/40 text-blue-300'
-                    : 'bg-blue-50 text-blue-600'
-                  : isDarkMode
-                    ? 'text-slate-400'
-                    : 'text-gray-500'
-              }`}
-            >
-              <i className={`fas ${showMoreMenu ? 'fa-xmark' : 'fa-ellipsis-h'} text-sm`}></i>
-              <span className="text-[10px] leading-none text-center whitespace-nowrap">
-                {lang === 'id' ? 'Menu' : 'More'}
-              </span>
-            </button>
           </div>
         </div>
       </nav>

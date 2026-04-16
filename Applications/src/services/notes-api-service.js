@@ -7,11 +7,15 @@ const NOTES_CACHE_KEY = 'studyflow-notes-cache-v1';
 const NOTES_QUEUE_KEY = 'studyflow-notes-queue-v1';
 const pendingFileUploads = new Map();
 let isSyncInitialized = false;
+const DEFAULT_NOTES_API_BASE_URL =
+  'https://studyflow-notes-worker.studyflow-notes-azz.workers.dev';
 
 const isBrowser = typeof window !== 'undefined';
 
 function getApiBaseUrl() {
-  return (import.meta.env.VITE_NOTES_API_BASE_URL || '').replace(/\/$/, '');
+  const configured = String(import.meta.env.VITE_NOTES_API_BASE_URL || '').trim();
+  if (configured) return configured.replace(/\/$/, '');
+  return DEFAULT_NOTES_API_BASE_URL;
 }
 
 function ensureApiBaseUrl() {
@@ -540,4 +544,3 @@ export const notesApiService = {
     return { queued: true };
   },
 };
-

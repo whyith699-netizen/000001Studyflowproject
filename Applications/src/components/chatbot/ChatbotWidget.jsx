@@ -7,6 +7,9 @@ import { CHATBOT_CONFIG } from '../../config/chatbot-config';
 
 const CHATBOT_RESIZE_KEY = 'studyflow_chatbot_manual_resize';
 const CHATBOT_FAB_POSITION_KEY = 'studyflow_chatbot_fab_position';
+const CHATBOT_OPEN_EVENT = 'studyflow:chatbot:open';
+const CHATBOT_CLOSE_EVENT = 'studyflow:chatbot:close';
+const CHATBOT_TOGGLE_EVENT = 'studyflow:chatbot:toggle';
 
 const DESKTOP_MARGIN = 24;
 const TOP_MARGIN = 18;
@@ -90,6 +93,22 @@ function ChatbotWidget() {
 
     window.addEventListener('resize', handleViewportResize);
     return () => window.removeEventListener('resize', handleViewportResize);
+  }, []);
+
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    const handleClose = () => setIsOpen(false);
+    const handleToggle = () => setIsOpen((prev) => !prev);
+
+    window.addEventListener(CHATBOT_OPEN_EVENT, handleOpen);
+    window.addEventListener(CHATBOT_CLOSE_EVENT, handleClose);
+    window.addEventListener(CHATBOT_TOGGLE_EVENT, handleToggle);
+
+    return () => {
+      window.removeEventListener(CHATBOT_OPEN_EVENT, handleOpen);
+      window.removeEventListener(CHATBOT_CLOSE_EVENT, handleClose);
+      window.removeEventListener(CHATBOT_TOGGLE_EVENT, handleToggle);
+    };
   }, []);
 
   useEffect(() => {
@@ -272,51 +291,49 @@ function ChatbotWidget() {
 
   return (
     <>
-      <div
-        ref={fabRef}
-        style={fabStyle}
-        className={`fixed z-40 transition-all duration-300 ${
-          isOpen || isDraggingFab ? 'scale-90 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
-        } ${!fabStyle ? (isBottomLeft ? 'left-6' : 'right-6') + ' bottom-6' : ''} ${isMobileViewport ? 'bottom-6' : ''}`}
-        onMouseEnter={() => !isDraggingFab && setIsHovered(true)}
-        onMouseLeave={() => !isDraggingFab && setIsHovered(false)}
-      >
-        {isHovered && !isDraggingFab && (
-          <div className="sf-chatbot-panel sf-chatbot-subtext absolute bottom-full right-0 mb-3 rounded-xl px-3 py-2 text-xs font-medium shadow-sm animate-fade-in">
-            Asisten StudyFlow
-            <div className="sf-chatbot-panel absolute bottom-0 right-4 h-2 w-2 translate-y-1/2 rotate-45 border-b border-r border-t-0 border-l-0" />
-          </div>
-        )}
+      {!isMobileViewport && (
+        <div
+          ref={fabRef}
+          style={fabStyle}
+          className={`fixed z-40 transition-all duration-300 ${
+            isOpen || isDraggingFab ? 'scale-90 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
+          } ${!fabStyle ? (isBottomLeft ? 'left-6' : 'right-6') + ' bottom-6' : ''}`}
+          onMouseEnter={() => !isDraggingFab && setIsHovered(true)}
+          onMouseLeave={() => !isDraggingFab && setIsHovered(false)}
+        >
+          {isHovered && !isDraggingFab && (
+            <div className="sf-chatbot-panel sf-chatbot-subtext absolute bottom-full right-0 mb-3 rounded-xl px-3 py-2 text-xs font-medium shadow-sm animate-fade-in">
+              Asisten StudyFlow
+              <div className="sf-chatbot-panel absolute bottom-0 right-4 h-2 w-2 translate-y-1/2 rotate-45 border-b border-r border-t-0 border-l-0" />
+            </div>
+          )}
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            onTouchStart={handleFabDragStart}
-            className={`sf-chatbot-fab relative z-10 flex items-center justify-center shadow-[0_10px_24px_rgba(15,23,42,0.12)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(15,23,42,0.14)] active:translate-y-0 ${
-              isMobileViewport
-                ? 'h-16 w-16 rounded-full'
-                : 'h-14 w-14 rounded-2xl'
-            }`}
-            aria-label="Buka chatbot"
-          >
-            <MessageSquare className={`pointer-events-none ${isMobileViewport ? 'h-7 w-7' : 'h-6 w-6'}`} />
-          </button>
-
-          {/* Reset position button - only on desktop when in custom position */}
-          {fabPosition && !isDraggingFab && !isMobileViewport && (
+          <div className="relative">
             <button
               type="button"
-              onClick={() => setFabPosition(null)}
-              className="absolute -top-1 -right-1 z-20 h-5 w-5 rounded-full bg-slate-600 text-white text-[10px] flex items-center justify-center hover:bg-slate-700 transition-colors"
-              aria-label="Reset posisi"
-              title="Reset ke posisi default"
+              onClick={() => setIsOpen(true)}
+              onTouchStart={handleFabDragStart}
+              className="sf-chatbot-fab relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl shadow-[0_10px_24px_rgba(15,23,42,0.12)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(15,23,42,0.14)] active:translate-y-0"
+              aria-label="Buka chatbot"
             >
-              ×
+              <MessageSquare className="pointer-events-none h-6 w-6" />
             </button>
-          )}
+
+            {/* Reset position button - only on desktop when in custom position */}
+            {fabPosition && !isDraggingFab && !isMobileViewport && (
+              <button
+                type="button"
+                onClick={() => setFabPosition(null)}
+                className="absolute -top-1 -right-1 z-20 h-5 w-5 rounded-full bg-slate-600 text-white text-[10px] flex items-center justify-center hover:bg-slate-700 transition-colors"
+                aria-label="Reset posisi"
+                title="Reset ke posisi default"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {isOpen && (
         <>

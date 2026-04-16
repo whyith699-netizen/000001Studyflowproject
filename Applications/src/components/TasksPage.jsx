@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from 'react';
 import { auth } from '../firebase-config';
 import { classesService, tasksService } from '../services/firestore-service';
+import { isTaskReminderActive, normalizeTaskReminder } from '../config/taskReminderOptions';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useLang } from '../contexts/LanguageContext';
 import { useConfirm } from '../contexts/ConfirmDialogContext';
@@ -66,6 +67,13 @@ const TasksPage = () => {
   const priorityColors = { high: 'bg-red-400', medium: 'bg-amber-400', low: 'bg-emerald-400' };
   const priorityLabels = { high: t('high'), medium: t('medium'), low: t('low') };
   const typeIcons = { individual: 'fa-user', group: 'fa-users', exam: 'fa-file-alt', other: 'fa-sticky-note' };
+  const reminderLabels = {
+    none: t('taskReminderNone'),
+    '10m': t('taskReminder10m'),
+    '30m': t('taskReminder30m'),
+    '1h': t('taskReminder1h'),
+    '1d': t('taskReminder1d'),
+  };
 
   const handleToggleTask = async (taskId) => {
     const task = tasks.find(t => t.id === taskId);
@@ -181,7 +189,7 @@ const TasksPage = () => {
       <main
         className="flex-1 flex flex-col h-full overflow-y-auto md:pb-0"
         style={{
-          paddingTop: 'env(safe-area-inset-top)',
+          paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
           paddingBottom: 'max(0px, env(safe-area-inset-bottom))'
         }}
       >
@@ -246,7 +254,12 @@ const TasksPage = () => {
                 const isExpanded = expandedId === task.id;
                 const taskLinks = task.links || [];
                 const taskFiles = task.files || [];
-                const hasDetails = task.description || taskLinks.length > 0 || taskFiles.length > 0;
+                const normalizedReminder = normalizeTaskReminder(task.reminder);
+                const hasDetails =
+                  task.description ||
+                  taskLinks.length > 0 ||
+                  taskFiles.length > 0 ||
+                  (task.dueDate && isTaskReminderActive(normalizedReminder));
 
                 return (
                   <div key={task.id}
@@ -341,6 +354,12 @@ const TasksPage = () => {
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-gray-100 text-gray-500'}`}>
                               <i className="far fa-calendar-alt text-[8px]"></i>
                               {new Date(task.dueDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                          {task.dueDate && isTaskReminderActive(normalizedReminder) && (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium ${isDarkMode ? 'bg-amber-900/30 text-amber-300' : 'bg-amber-50 text-amber-700'}`}>
+                              <i className="fas fa-bell text-[8px]"></i>
+                              {t('taskReminderLabel')}: {reminderLabels[normalizedReminder]}
                             </span>
                           )}
                           {getClassName(task.classId) && (

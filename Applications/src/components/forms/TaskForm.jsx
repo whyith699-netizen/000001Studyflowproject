@@ -1,5 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { MAX_FILE_SIZE_BYTES, MAX_FILES_PER_TASK } from '../../services/attachments-service';
+import {
+  TASK_REMINDER_OPTIONS,
+  isTaskReminderActive,
+  normalizeTaskReminder,
+} from '../../config/taskReminderOptions';
 import Select from '../Select';
 
 const TYPE_OPTIONS = [
@@ -52,6 +57,7 @@ function TaskForm({
   const [type, setType] = useState(initialValues.type || 'individual');
   const [priority, setPriority] = useState(initialValues.priority || 'medium');
   const [dueDate, setDueDate] = useState(toDateTimeLocal(initialValues.dueDate));
+  const [reminder, setReminder] = useState(normalizeTaskReminder(initialValues.reminder));
   const [description, setDescription] = useState(initialValues.description || '');
   const [links, setLinks] = useState(Array.isArray(initialValues.links) ? initialValues.links : []);
   const [linkTitle, setLinkTitle] = useState('');
@@ -90,6 +96,22 @@ function TaskForm({
       return '';
     }
   }, [dueDate]);
+
+  const reminderOptions = useMemo(
+    () =>
+      TASK_REMINDER_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(option.labelKey),
+      })),
+    [t]
+  );
+
+  const selectedReminderLabel = useMemo(
+    () =>
+      reminderOptions.find((option) => option.value === reminder)?.label ||
+      t('taskReminderNone'),
+    [reminder, reminderOptions, t]
+  );
 
   const pushLink = () => {
     const trimmedUrl = linkUrl.trim();
@@ -149,6 +171,7 @@ function TaskForm({
         type,
         priority,
         dueDate: dueDate || null,
+        reminder: dueDate ? reminder : 'none',
         description: description.trim(),
         links: links.filter((link) => link?.url?.trim()),
         newFiles,
@@ -296,9 +319,34 @@ function TaskForm({
           <input
             type="datetime-local"
             value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+            onChange={(e) => {
+              const nextDueDate = e.target.value;
+              setDueDate(nextDueDate);
+              if (!nextDueDate) {
+                setReminder('none');
+              }
+            }}
             className={`${baseInputCls} ${darkInput}`}
           />
+          <div>
+            <p className={`mb-1 text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('taskReminderLabel')}</p>
+            <Select
+              value={reminder}
+              onChange={(value) => setReminder(value)}
+              options={reminderOptions}
+              placeholder={t('taskReminderNone')}
+              isDarkMode={isDarkMode}
+              disabled={!dueDate}
+            />
+            <p className={`mt-1 text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+              {dueDate ? t('taskReminderHint') : t('taskReminderDisabledHint')}
+            </p>
+            {dueDate && isTaskReminderActive(reminder) && (
+              <p className={`mt-1 text-[11px] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                {t('taskReminderLabel')}: {selectedReminderLabel}
+              </p>
+            )}
+          </div>
           <textarea
             rows={3}
             value={description}

@@ -1,6 +1,12 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Haptics } from '@capacitor/haptics';
+import {
+  getTaskReminderNotificationLabel,
+  getTaskReminderOffsetMs,
+  isTaskReminderActive,
+  normalizeTaskReminder,
+} from '../config/taskReminderOptions';
 
 let nativePermissionRequested = false;
 let webPermissionRequested = false;
@@ -8,17 +14,39 @@ const nativeChannelsReady = new Set();
 
 const TIMER_CHANNEL_ID = 'studyflow-timer-channel';
 const DEADLINE_CHANNEL_ID = 'studyflow-deadline-channel';
-const DEADLINE_OFFSETS = [
-  { key: '24h', ms: 24 * 60 * 60 * 1000, label: '24 hours' },
-  { key: '1h', ms: 60 * 60 * 1000, label: '1 hour' }
-];
+const TONE_PATTERNS = {
+  complete: [
+    { at: 0, freq: 880, duration: 0.2, peak: 0.2 },
+    { at: 0.22, freq: 988, duration: 0.2, peak: 0.18 },
+    { at: 0.44, freq: 1174, duration: 0.2, peak: 0.16 }
+  ],
+  'break-start': [
+    { at: 0, freq: 659, duration: 0.16, peak: 0.14 },
+    { at: 0.18, freq: 784, duration: 0.18, peak: 0.16 }
+  ],
+  'focus-start': [
+    { at: 0, freq: 784, duration: 0.16, peak: 0.14 },
+    { at: 0.18, freq: 988, duration: 0.18, peak: 0.16 }
+  ]
+};
 
 function getAudioContextCtor() {
   if (typeof window === 'undefined') return null;
   return window.AudioContext || window.webkitAudioContext || null;
 }
 
-async function playAlarmTone() {
+function getActiveLang() {
+  if (typeof window === 'undefined') return 'en';
+
+  try {
+    const stored = window.localStorage?.getItem('studyflow-lang');
+    return stored === 'id' ? 'id' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+async function playAlarmTone(tone = 'complete') {
   const AudioContextCtor = getAudioContextCtor();
   if (!AudioContextCtor) return false;
 
@@ -29,13 +57,13 @@ async function playAlarmTone() {
     }
 
     const now = context.currentTime;
-    const pattern = [
-      { at: 0, freq: 880 },
-      { at: 0.22, freq: 988 },
-      { at: 0.44, freq: 1174 }
-    ];
+    const pattern = TONE_PATTERNS[tone] || TONE_PATTERNS.complete;
+    const longestStep = pattern.reduce(
+      (max, entry) => Math.max(max, entry.at + entry.duration),
+      0
+    );
 
-    pattern.forEach(({ at, freq }) => {
+    pattern.forEach(({ at, freq, duration, peak }) => {
       const oscillator = context.createOscillator();
       const gainNode = context.createGain();
 
@@ -43,18 +71,18 @@ async function playAlarmTone() {
       oscillator.frequency.setValueAtTime(freq, now + at);
 
       gainNode.gain.setValueAtTime(0.0001, now + at);
-      gainNode.gain.exponentialRampToValueAtTime(0.2, now + at + 0.03);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.18);
+      gainNode.gain.exponentialRampToValueAtTime(peak, now + at + 0.03);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + at + duration);
 
       oscillator.connect(gainNode);
       gainNode.connect(context.destination);
       oscillator.start(now + at);
-      oscillator.stop(now + at + 0.2);
+      oscillator.stop(now + at + duration + 0.02);
     });
 
     setTimeout(() => {
       context.close().catch(() => {});
-    }, 1200);
+    }, Math.ceil((longestStep + 0.6) * 1000));
 
     return true;
   } catch (error) {
@@ -80,15 +108,34 @@ async function vibrateDevice() {
   return false;
 }
 
-async function triggerForegroundAlert({ soundEnabled = true } = {}) {
+async function triggerForegroundAlert({
+  soundEnabled = true,
+  tone = 'complete',
+  vibrate = true,
+} = {}) {
   const ops = [];
   if (soundEnabled) {
-    ops.push(playAlarmTone());
+    ops.push(playAlarmTone(tone));
   }
-  ops.push(vibrateDevice());
+  if (vibrate) {
+    ops.push(vibrateDevice());
+  }
 
   const result = await Promise.allSettled(ops);
   return result.some((entry) => entry.status === 'fulfilled' && entry.value);
+}
+
+export async function playTimerTransitionCue({
+  eventType = 'break-start',
+  soundEnabled = true,
+} = {}) {
+  if (!soundEnabled) return false;
+
+  return triggerForegroundAlert({
+    soundEnabled,
+    tone: eventType,
+    vibrate: false,
+  });
 }
 
 async function ensureNativeNotificationSupport() {
@@ -156,7 +203,8 @@ async function showWebNotification(title, body) {
 export async function notifyTimerComplete({
   title = 'Timer Complete!',
   body = 'Your timer session has ended.',
-  soundEnabled = true
+  soundEnabled = true,
+  tone = 'complete',
 }) {
   if (Capacitor.isNativePlatform()) {
     const canNotify = await ensureNativeNotificationSupport();
@@ -172,7 +220,7 @@ export async function notifyTimerComplete({
       typeof document !== 'undefined' && document.visibilityState === 'visible';
 
     if (appIsForeground) {
-      await triggerForegroundAlert({ soundEnabled });
+      await triggerForegroundAlert({ soundEnabled, tone });
     }
 
     try {
@@ -215,36 +263,108 @@ function createReminderId(userId, taskId, offsetKey) {
   return 1000000000 + (hash % 1000000000);
 }
 
+function getPriorityLabel(priority, lang) {
+  const normalized = String(priority || '').toLowerCase();
+  const labels = {
+    en: {
+      high: 'High',
+      medium: 'Medium',
+      low: 'Low',
+    },
+    id: {
+      high: 'Tinggi',
+      medium: 'Sedang',
+      low: 'Rendah',
+    },
+  };
+
+  return labels[lang]?.[normalized] || labels.en[normalized] || null;
+}
+
+function buildDeadlineReminderContent(task, reminderKey, lang) {
+  const taskLabel = task.text || task.title || (lang === 'id' ? 'Tugas' : 'Task');
+  const reminderLabel = getTaskReminderNotificationLabel(reminderKey, lang);
+  const classLabel = task.className ? String(task.className).trim() : '';
+  const priorityLabel = getPriorityLabel(task.priority, lang);
+
+  const dueDate = parseDueDate(task.dueDate);
+  let deadlineStr = '';
+  if (dueDate) {
+    const options = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+    deadlineStr = dueDate.toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', options);
+  }
+
+  if (lang === 'id') {
+    const bodyParts = [`Yuk siap-siap, tugas "${taskLabel}" batas waktunya tinggal ${reminderLabel} lagi nih.`];
+    if (deadlineStr) {
+      bodyParts.push(`Deadline: ${deadlineStr}.`);
+    }
+    if (classLabel) {
+      bodyParts.push(`Kelas: ${classLabel}.`);
+    }
+    if (priorityLabel) {
+      bodyParts.push(`Prioritas: ${priorityLabel}.`);
+    }
+    bodyParts.push(`Ayo selesaikan sekarang, kamu pasti bisa! 💪`);
+
+    return {
+      title: 'Waktunya ngerjain tugas! 🚀',
+      body: bodyParts.join(' '),
+    };
+  }
+
+  const bodyParts = [`Hey, your task "${taskLabel}" is due in ${reminderLabel}.`];
+  if (deadlineStr) {
+    bodyParts.push(`Deadline: ${deadlineStr}.`);
+  }
+  if (classLabel) {
+    bodyParts.push(`Class: ${classLabel}.`);
+  }
+  if (priorityLabel) {
+    bodyParts.push(`Priority: ${priorityLabel}.`);
+  }
+  bodyParts.push(`Let's get it done! 💪`);
+
+  return {
+    title: 'Time to crush your task! 🚀',
+    body: bodyParts.join(' '),
+  };
+}
+
 function buildDeadlineNotifications(tasks, userId) {
   const now = Date.now();
   const notifications = [];
+  const lang = getActiveLang();
 
   tasks.forEach((task) => {
     if (!task || task.completed) return;
     const dueDate = parseDueDate(task.dueDate);
     if (!dueDate) return;
+    const reminderKey = normalizeTaskReminder(task.reminder);
+    if (!isTaskReminderActive(reminderKey)) return;
 
-    DEADLINE_OFFSETS.forEach((offset) => {
-      const reminderAt = dueDate.getTime() - offset.ms;
-      if (reminderAt <= now + 15000) return;
+    const offsetMs = getTaskReminderOffsetMs(reminderKey);
+    if (!offsetMs) return;
 
-      const taskLabel = task.text || task.title || 'Task';
+    const reminderAt = dueDate.getTime() - offsetMs;
+    if (reminderAt <= now + 15000) return;
 
-      notifications.push({
-        id: createReminderId(userId, task.id, offset.key),
-        channelId: DEADLINE_CHANNEL_ID,
-        title: 'Task deadline reminder',
-        body: `"${taskLabel}" is due in ${offset.label}.`,
-        schedule: {
-          at: new Date(reminderAt),
-          allowWhileIdle: true
-        },
-        extra: {
-          type: 'task-deadline',
-          taskId: task.id,
-          offset: offset.key
-        }
-      });
+    const content = buildDeadlineReminderContent(task, reminderKey, lang);
+
+    notifications.push({
+      id: createReminderId(userId, task.id, reminderKey),
+      channelId: DEADLINE_CHANNEL_ID,
+      title: content.title,
+      body: content.body,
+      schedule: {
+        at: new Date(reminderAt),
+        allowWhileIdle: true
+      },
+      extra: {
+        type: 'task-deadline',
+        taskId: task.id,
+        offset: reminderKey
+      }
     });
   });
 
@@ -302,6 +422,7 @@ export async function syncTaskDeadlineReminders(tasks = [], userId = '') {
 }
 
 export default {
+  playTimerTransitionCue,
   notifyTimerComplete,
   syncTaskDeadlineReminders
 };

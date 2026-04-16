@@ -21,6 +21,7 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore";
+import { normalizeTaskReminder } from "../config/taskReminderOptions";
 
 // Generate unique ID
 const generateId = (prefix = "item") => {
@@ -90,11 +91,54 @@ const sanitizeSchedules = (schedules, maxItems = 20) =>
   sanitizeArray(schedules, maxItems)
     .map((entry) => {
       const day = normalizeDay(entry?.day);
-      const time = sanitize(entry?.time || "", 20);
+      const startTime = sanitize(entry?.startTime || "", 5);
+      const endTime = sanitize(entry?.endTime || "", 5);
+      const fallbackTime = sanitize(entry?.time || "", 20);
+      const time =
+        fallbackTime || (startTime && endTime ? `${startTime} - ${endTime}` : "");
       if (!day) return null;
-      return { day, time: time || "" };
+      return { day, time: time || "", startTime, endTime };
     })
     .filter(Boolean);
+
+const sanitizeUrl = (value) => {
+  const sanitized = sanitize(value || "", 500);
+  if (!sanitized) return "";
+  try {
+    const parsed = new URL(sanitized);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+};
+
+const sanitizeStudyTools = (items, maxItems = 40) =>
+  sanitizeArray(items, maxItems)
+    .map((item) => {
+      const launchUrl = sanitizeUrl(item?.launchUrl || item?.url);
+      if (!launchUrl) return null;
+
+      const canEmbed = Boolean(item?.canEmbed);
+      const category = canEmbed ? "embedded" : "external";
+      const embedUrl = canEmbed
+        ? sanitizeUrl(item?.embedUrl || launchUrl) || launchUrl
+        : "";
+
+      return {
+        id: sanitize(item?.id || "", 120),
+        name: sanitize(item?.name || "", 120),
+        description: sanitize(item?.description || "", 280),
+        launchUrl,
+        embedUrl,
+        canEmbed,
+        category,
+        icon: sanitize(item?.icon || "", 60) || null,
+        createdAt: Number.isFinite(item?.createdAt) ? item.createdAt : Date.now(),
+        updatedAt: Number.isFinite(item?.updatedAt) ? item.updatedAt : Date.now(),
+      };
+    })
+    .filter((item) => item && item.id && item.name);
 
 const toDateKey = (date = new Date()) => {
   const year = date.getFullYear();
@@ -164,6 +208,10 @@ export const tasksService = {
       attachmentErrors = uploadResult.failed;
     }
 
+    const normalizedReminder = taskData.dueDate
+      ? normalizeTaskReminder(taskData.reminder)
+      : "none";
+
     const newTask = {
       id: taskId,
       text: title,
@@ -179,7 +227,7 @@ export const tasksService = {
       description: sanitize(taskData.description || "", 1200),
       links: sanitizeLinks(taskData.links || []),
       files: [...sanitizeFilesMeta(taskData.files || []), ...uploadedFiles],
-      reminder: taskData.reminder || null,
+      reminder: normalizedReminder,
       createdAt: Date.now(),
       updatedAt: serverTimestamp(),
     };
@@ -216,6 +264,10 @@ export const tasksService = {
       ...updates,
       updatedAt: serverTimestamp(),
     };
+    const nextDueDate =
+      updates.dueDate !== undefined
+        ? updates.dueDate || null
+        : existing.dueDate || null;
 
     if (nextTitle !== null) {
       payload.title = nextTitle;
@@ -226,6 +278,13 @@ export const tasksService = {
     if (updates.links !== undefined)
       payload.links = sanitizeLinks(updates.links || []);
     payload.files = nextFiles;
+    if (updates.reminder !== undefined || updates.dueDate !== undefined) {
+      const requestedReminder =
+        updates.reminder !== undefined ? updates.reminder : existing.reminder;
+      payload.reminder = nextDueDate
+        ? normalizeTaskReminder(requestedReminder)
+        : "none";
+    }
 
     delete payload.newFiles;
     await updateDoc(taskRef, payload);
@@ -629,6 +688,89 @@ export const uniformsService = {
 };
 
 /**
+ * Study Tools Service
+ */
+export const studyToolsService = {
+  async getStudyTools() {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Must be logged in");
+
+    const ref = doc(db, "users", user.uid, "settings", "studyTools");
+    const snapshot = await getDoc(ref);
+    if (!snapshot.exists()) return [];
+    return sanitizeStudyTools(snapshot.data().items || []);
+  },
+
+  subscribeToStudyTools(callback) {
+    const user = auth.currentUser;
+    if (!user) return () => {};
+
+    const ref = doc(db, "users", user.uid, "settings", "studyTools");
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          callback([]);
+          return;
+        }
+        callback(sanitizeStudyTools(snapshot.data().items || []));
+      },
+      (error) => {
+        console.error("StudyTools subscription error:", error);
+      },
+    );
+  },
+
+  async saveStudyTools(items) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Must be logged in");
+
+    const ref = doc(db, "users", user.uid, "settings", "studyTools");
+    const sanitizedItems = sanitizeStudyTools(items);
+    await setDoc(
+      ref,
+      {
+        items: sanitizedItems,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return sanitizedItems;
+  },
+
+  async upsertStudyTool(toolData) {
+    const currentItems = await this.getStudyTools();
+    const now = Date.now();
+    const nextTool = {
+      ...toolData,
+      id: toolData.id || generateId("studytool"),
+      createdAt:
+        toolData.createdAt ||
+        currentItems.find((item) => item.id === toolData.id)?.createdAt ||
+        now,
+      updatedAt: now,
+    };
+
+    const existingIndex = currentItems.findIndex((item) => item.id === nextTool.id);
+    const nextItems =
+      existingIndex >= 0
+        ? currentItems.map((item, index) =>
+            index === existingIndex ? { ...item, ...nextTool } : item,
+          )
+        : [...currentItems, nextTool];
+
+    const saved = await this.saveStudyTools(nextItems);
+    return saved.find((item) => item.id === nextTool.id) || null;
+  },
+
+  async deleteStudyTool(toolId) {
+    const currentItems = await this.getStudyTools();
+    const nextItems = currentItems.filter((item) => item.id !== toolId);
+    await this.saveStudyTools(nextItems);
+  },
+};
+
+/**
  * Calendar Events Service
  */
 const CALENDAR_EVENT_COLOR_KEYS = [
@@ -746,6 +888,8 @@ export async function deleteUserData() {
 
   const settingsRef = doc(db, "users", user.uid, "settings", "uniforms");
   await deleteDoc(settingsRef).catch(() => {});
+  const studyToolsRef = doc(db, "users", user.uid, "settings", "studyTools");
+  await deleteDoc(studyToolsRef).catch(() => {});
 
   const userRef = doc(db, "users", user.uid);
   await deleteDoc(userRef);
@@ -757,5 +901,6 @@ export default {
   user: userService,
   studySessions: studySessionsService,
   uniforms: uniformsService,
+  studyTools: studyToolsService,
   calendarEvents: calendarEventsService,
 };

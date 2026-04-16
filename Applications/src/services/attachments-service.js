@@ -59,7 +59,7 @@ export async function deleteTaskAttachments(files = []) {
     .map(async (file) => {
       try {
         await deleteObject(ref(storage, file.path));
-      } catch (error) {
+      } catch {
         // Best-effort cleanup.
       }
     });

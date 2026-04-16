@@ -6,11 +6,13 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
+    iosScheme: 'https',
   },
   plugins: {
     SocialLogin: {
       google: {
         webClientId: '912149378367-bcfpe80oogfmpbb16skohkv0f2be2rpk.apps.googleusercontent.com',
+        iosClientId: '912149378367-2tjp261l82vh5etjisk6vasrljreavbf.apps.googleusercontent.com',
       },
     },
     SplashScreen: {

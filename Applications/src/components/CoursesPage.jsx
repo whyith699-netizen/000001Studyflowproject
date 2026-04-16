@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase-config';
 import { classesService, tasksService } from '../services/firestore-service';
@@ -256,7 +256,10 @@ const CoursesPage = () => {
   const [editingClassId, setEditingClassId] = useState(null);
 
   // Add class form
-  const [formData, setFormData] = useState({ name: '', icon: 'graduation-cap', days: [], links: [{ title: '', url: '' }] });
+  const [formData, setFormData] = useState({ 
+    name: '', icon: 'graduation-cap', room: '', description: '',
+    schedules: [{day: 'monday', startTime: '', endTime: ''}], links: [{ title: '', url: '' }] 
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Pagination
@@ -277,8 +280,8 @@ const CoursesPage = () => {
       filtered = filtered.filter(c => c.name?.toLowerCase().includes(q));
     }
     if (filterDay !== 'All') {
-      const fullDay = DAY_MAP[filterDay];
-      filtered = filtered.filter(c => c.days?.some(d => d.toLowerCase() === fullDay));
+      const fullDay = DAY_MAP[filterDay] || filterDay;
+      filtered = filtered.filter(c => c.days?.some(d => d.toLowerCase() === fullDay?.toLowerCase()));
     }
     return filtered;
   }, [classes, searchQuery, filterDay]);
@@ -302,7 +305,6 @@ const CoursesPage = () => {
   }, [tasks]);
 
   // Get tasks for class
-  const getClassTasks = (classId) => tasks.filter(t => t.classId === classId);
   const getClassPendingTasks = (classId) => tasks.filter(t => t.classId === classId && !t.completed);
 
   // Selected class data
@@ -321,22 +323,52 @@ const CoursesPage = () => {
   const closeClassFormModal = () => {
     setShowAddModal(false);
     setEditingClassId(null);
-    setFormData({ name: '', icon: 'graduation-cap', days: [], links: [{ title: '', url: '' }] });
+    setFormData({ 
+      name: '', icon: 'graduation-cap', room: '', description: '',
+      schedules: [{day: 'monday', startTime: '', endTime: ''}], links: [{ title: '', url: '' }] 
+    });
   };
 
   const openAddClassModal = () => {
     setEditingClassId(null);
-    setFormData({ name: '', icon: 'graduation-cap', days: [], links: [{ title: '', url: '' }] });
+    setFormData({ 
+      name: '', icon: 'graduation-cap', room: '', description: '',
+      schedules: [{day: 'monday', startTime: '', endTime: ''}], links: [{ title: '', url: '' }] 
+    });
     setShowAddModal(true);
   };
 
   const openEditClassModal = (cls) => {
     if (!cls) return;
     setEditingClassId(cls.id);
+    
+    let initSchedules = [{day: 'monday', startTime: '', endTime: ''}];
+    if (cls.schedules?.length > 0) {
+      initSchedules = cls.schedules.map(s => {
+        let st = s.startTime || '', et = s.endTime || '';
+        if (s.time && !st && !et) {
+          const p = s.time.split(' - ');
+          st = p[0]?.trim() || '';
+          et = p[1]?.trim() || '';
+        }
+        return { day: s.day.toLowerCase(), startTime: st, endTime: et };
+      });
+    } else if (cls.days?.length > 0) {
+      let st = '', et = '';
+      if (cls.time) {
+        const p = cls.time.split(' - ');
+        st = p[0]?.trim() || '';
+        et = p[1]?.trim() || '';
+      }
+      initSchedules = cls.days.map(d => ({ day: d.toLowerCase(), startTime: st, endTime: et }));
+    }
+
     setFormData({
       name: cls.name || '',
       icon: normalizeIconValue(cls.icon),
-      days: Array.isArray(cls.days) ? cls.days : [],
+      room: cls.room || '',
+      description: cls.description || '',
+      schedules: initSchedules,
       links: Array.isArray(cls.links) && cls.links.length > 0
         ? cls.links.map((l) => ({ title: l?.title || '', url: l?.url || '' }))
         : [{ title: '', url: '' }],
@@ -350,10 +382,25 @@ const CoursesPage = () => {
     if (!formData.name.trim()) return;
     setIsSubmitting(true);
     try {
+      const validSchedules = formData.schedules.filter(s => s.day).map(s => {
+        const formattedTime = s.startTime && s.endTime ? `${s.startTime} - ${s.endTime}` : (s.startTime || '');
+        return { day: s.day.toLowerCase(), time: formattedTime, startTime: s.startTime, endTime: s.endTime };
+      });
+      if (validSchedules.length === 0) validSchedules.push({ day: 'monday', time: '', startTime: '', endTime: '' });
+
+      const daysList = [...new Set(validSchedules.map(s => s.day))];
+      const scheduleString = validSchedules.map(s => `${s.day.substring(0,3)} ${s.time}`.trim()).join(', ');
+      const firstTime = validSchedules[0]?.time || '';
+
       const payload = {
         name: formData.name.trim(),
         icon: formData.icon,
-        days: formData.days,
+        room: formData.room.trim(),
+        description: formData.description.trim(),
+        schedule: scheduleString,
+        days: daysList,
+        time: firstTime,
+        schedules: validSchedules,
         links: formData.links.filter(l => l.url.trim()),
       };
 
@@ -390,11 +437,18 @@ const CoursesPage = () => {
     }
   };
 
-  const toggleDay = (day) => {
-    setFormData(prev => ({
-      ...prev,
-      days: prev.days.includes(day) ? prev.days.filter(d => d !== day) : [...prev.days, day],
-    }));
+  const addSchedule = () => {
+    setFormData(prev => ({ ...prev, schedules: [...prev.schedules, { day: 'monday', startTime: '', endTime: '' }] }));
+  };
+  const updateSchedule = (index, field, value) => {
+    setFormData(prev => {
+      const newSchedules = [...prev.schedules];
+      newSchedules[index][field] = value;
+      return { ...prev, schedules: newSchedules };
+    });
+  };
+  const removeSchedule = (index) => {
+    setFormData(prev => ({ ...prev, schedules: prev.schedules.filter((_, i) => i !== index) }));
   };
 
   const addLink = () => setFormData(prev => ({ ...prev, links: [...prev.links, { title: '', url: '' }] }));
@@ -408,15 +462,16 @@ const CoursesPage = () => {
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
   const textSecondary = isDarkMode ? 'text-slate-400' : 'text-gray-500';
   const textMuted = isDarkMode ? 'text-slate-500' : 'text-gray-400';
-  const bgSubtle = isDarkMode ? 'bg-slate-800' : 'bg-gray-50';
   const borderSubtle = isDarkMode ? 'border-slate-700' : 'border-gray-200';
-  const hoverBg = isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100';
 
   return (
     <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'sf-dark-shell' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       <Sidebar user={user} />
 
-      <main className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0">
+      <main
+        className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
+      >
         <div className="flex-1 w-full px-4 py-4 md:px-6 md:py-5 flex flex-col gap-3">
 
           {/* ============ MY CLASSES SECTION ============ */}
@@ -555,87 +610,207 @@ const CoursesPage = () => {
 
       {/* ============ ADD CLASS MODAL ============ */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeClassFormModal}>
-          <div className={`rounded-xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto border ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-200'}`}
-            onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`text-lg font-semibold ${textPrimary}`}>{editingClassId ? t('editClass') : t('addClass')}</h2>
-              <button onClick={closeClassFormModal} className={`p-2 rounded-lg transition-colors ${hoverBg}`}>
-                <i className={`fas fa-times ${textMuted}`}></i>
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4" onClick={closeClassFormModal}>
+          <div className={`rounded-[20px] p-6 lg:p-8 w-full max-w-3xl shadow-xl max-h-[90vh] overflow-y-auto ${
+            isDarkMode ? 'bg-[#1e1e1e] border border-white/10' : 'bg-white'
+          }`} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 lg:mb-8">
+              <h2 className={`text-xl lg:text-2xl font-bold ${textPrimary}`}>{editingClassId ? t('editClass') : t('addClass')}</h2>
+              <button type="button" onClick={closeClassFormModal} className={`p-2 rounded-full transition-colors ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                <i className={`fas fa-times text-lg ${textMuted}`}></i>
               </button>
             </div>
 
-            <form onSubmit={handleAddClass} className="space-y-4">
-              {/* Name + Icon */}
-              <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${textSecondary}`}>{t('className')}</label>
-                <div className="flex gap-2">
-                  <IconPicker value={formData.icon} onChange={icon => setFormData(prev => ({ ...prev, icon }))} />
-                  <input type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder={t('exampleMath')} required
-                    className={`flex-1 px-4 py-2.5 border rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all ${
-                      isDarkMode ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'
-                    }`}
-                  />
-                </div>
-              </div>
+            <form onSubmit={handleAddClass} className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                {/* LEFT COLUMN */}
+                <div className="space-y-6">
+                  {/* Name */}
+                  <div className="space-y-2">
+                    <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('className') || 'Class Name'}</label>
+                    <input type="text" value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder={t('exampleMath') || 'e.g. Mathematics'} required
+                      className={`w-full px-4 py-3 rounded-xl border text-[15px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${
+                        isDarkMode ? 'bg-[#151515] border-white/10 text-white placeholder-gray-600' : 'bg-gray-50/50 border-gray-200 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
 
-              {/* Schedule Days */}
-              <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${textSecondary}`}>{t('dayLabel')}</label>
-                <div className="flex gap-2 flex-wrap">
-                  {DAYS.map(day => (
-                    <button key={day} type="button" onClick={() => toggleDay(day)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                        formData.days.includes(day)
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                      }`}>
-                      {DAY_LABELS[day] || day}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                  {/* Teacher Name */}
+                  <div className="space-y-2">
+                    <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('teacherLabel') || 'Teacher Name'}</label>
+                    <input type="text" 
+                      placeholder="teacherPlaceholder"
+                      className={`w-full px-4 py-3 rounded-xl border text-[15px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${
+                        isDarkMode ? 'bg-[#151515] border-white/10 text-white placeholder-gray-600' : 'bg-gray-50/50 border-gray-200 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
 
-              {/* Links */}
-              <div>
-                <label className={`block text-xs font-medium uppercase tracking-wide mb-2 ${textSecondary}`}>{t('classLinks')}</label>
-                <div className="space-y-2">
-                  {formData.links.map((link, i) => (
-                    <div key={i} className="flex gap-2">
-                      <input type="text" value={link.title} onChange={e => updateLink(i, 'title', e.target.value)}
-                        placeholder={t('linkTitle')}
-                        className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-500 transition-all ${
-                          isDarkMode ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'
-                        }`}
-                      />
-                      <input type="url" value={link.url} onChange={e => updateLink(i, 'url', e.target.value)}
-                        placeholder="URL"
-                        className={`flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-blue-500 transition-all ${
-                          isDarkMode ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500' : 'bg-gray-50 border-gray-200 text-gray-800 placeholder-gray-400'
-                        }`}
-                      />
-                      {formData.links.length > 1 && (
-                        <button type="button" onClick={() => removeLink(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                          <i className="fas fa-times"></i>
-                        </button>
-                      )}
+                  {/* Room Number */}
+                  <div className="space-y-2">
+                    <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('roomLabel') || 'Room Number'}</label>
+                    <input type="text" value={formData.room} onChange={e => setFormData(prev => ({ ...prev, room: e.target.value }))}
+                      placeholder="roomPlaceholder"
+                      className={`w-full px-4 py-3 rounded-xl border text-[15px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all ${
+                        isDarkMode ? 'bg-[#151515] border-white/10 text-white placeholder-gray-600' : 'bg-gray-50/50 border-gray-200 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Select Class Icon */}
+                  <div className="space-y-2">
+                    <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('selectIcon') || 'Select Class Icon'}</label>
+                    <div className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-colors ${
+                      isDarkMode ? 'bg-[#151515] border-white/10 hover:border-blue-500/50' : 'bg-white border-gray-200 hover:border-blue-500'
+                    }`}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl shadow-md shadow-blue-500/20">
+                          <i className={`fas fa-${formData.icon || 'graduation-cap'}`}></i>
+                        </div>
+                        <div>
+                          <p className={`text-[15px] font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formData.icon || 'Icon Category'}</p>
+                          <p className="text-[13px] text-gray-400">Search icon...</p>
+                        </div>
+                      </div>
+                      <i className="fas fa-chevron-right text-gray-400 pr-2 block"></i>
+                      {/* Hidden overlay or picker trigger could go here */}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Links */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                      <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('classLinks') || 'Links'}</label>
+                      <button type="button" onClick={addLink} className="text-[13px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1.5">
+                        <i className="fas fa-plus"></i> Add Link
+                      </button>
+                    </div>
+                    {formData.links.length <= 1 && !formData.links[0]?.url ? (
+                      <div className={`py-4 rounded-xl border border-dashed text-center text-[13px] ${isDarkMode ? 'border-white/10 text-gray-500' : 'border-gray-200 text-gray-400'}`}>
+                        No links added yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {formData.links.map((link, i) => (
+                          <div key={i} className="flex gap-2">
+                            <input type="text" value={link.title} onChange={e => updateLink(i, 'title', e.target.value)} placeholder="Title"
+                              className={`flex-1 px-3 py-2 rounded-lg border text-sm focus:outline-none focus:border-blue-500 transition-all ${isDarkMode ? 'bg-[#151515] border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                            <input type="url" value={link.url} onChange={e => updateLink(i, 'url', e.target.value)} placeholder="URL"
+                              className={`flex-[2] px-3 py-2 rounded-lg border text-sm focus:outline-none focus:border-blue-500 transition-all ${isDarkMode ? 'bg-[#151515] border-white/10 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                            <button type="button" onClick={() => removeLink(i)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors">
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <button type="button" onClick={addLink}
-                  className="mt-2 flex items-center gap-2 px-3 py-1.5 text-blue-500 text-xs font-medium hover:bg-blue-50 rounded-lg transition-colors">
-                  <i className="fas fa-plus"></i> {t('addLink')}
+
+                {/* RIGHT COLUMN */}
+                <div className="space-y-6">
+                  {/* Schedules (Dynamic Stack) */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                       <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('classSchedule') || 'Class Schedule'}</label>
+                       <button type="button" onClick={addSchedule} className="text-[13px] font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1.5">
+                         <i className="fas fa-plus"></i> Add Schedule
+                       </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {formData.schedules.map((sched, index) => (
+                        <div key={index} className={`relative p-4 pl-12 rounded-xl border relative shadow-sm transition-all ${isDarkMode ? 'bg-[#151515] border-white/10' : 'bg-white border-gray-200'} group`}>
+                          {/* Left handle/number */}
+                          <div className={`absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center border-r rounded-l-xl ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-100'}`}>
+                            <span className="text-xs font-bold text-gray-400">{index + 1}</span>
+                          </div>
+
+                          {/* Delete button (Show if > 1 schedule) */}
+                          {formData.schedules.length > 1 && (
+                            <button type="button" onClick={() => removeSchedule(index)}
+                              className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10 hover:bg-red-600">
+                              <i className="fas fa-times"></i>
+                            </button>
+                          )}
+
+                          <div className="space-y-4">
+                            {/* Day Selection Row */}
+                            <div className="flex flex-wrap gap-2">
+                              {DAYS.map(day => (
+                                <button key={day} type="button" onClick={() => updateSchedule(index, 'day', day)}
+                                  className={`w-9 h-9 flex justify-center items-center rounded-full text-[12px] font-bold border transition-all ${
+                                    sched.day === day
+                                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/20'
+                                      : isDarkMode ? 'bg-[#1e1e1e] border-white/10 text-gray-400 hover:border-gray-500' : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+                                  }`}>
+                                  {t(day.substring(0, 3).toLowerCase()).substring(0, 1).toUpperCase()}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Times Row */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="relative">
+                                 <input type="time" required
+                                   value={sched.startTime || ''} 
+                                   onChange={e => updateSchedule(index, 'startTime', e.target.value)}
+                                   className={`w-full pl-3 pr-8 py-2 rounded-lg border text-[13px] focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                                     isDarkMode ? 'bg-[#1e1e1e] border-white/10 text-white [color-scheme:dark]' : 'bg-gray-50/50 border-gray-200 text-gray-900 [color-scheme:light]'
+                                   }`}
+                                 />
+                                 <i className="far fa-clock absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                              </div>
+                              <div className="relative">
+                                 <input type="time" required
+                                   value={sched.endTime || ''} 
+                                   onChange={e => updateSchedule(index, 'endTime', e.target.value)}
+                                   className={`w-full pl-3 pr-8 py-2 rounded-lg border text-[13px] focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all ${
+                                     isDarkMode ? 'bg-[#1e1e1e] border-white/10 text-white [color-scheme:dark]' : 'bg-gray-50/50 border-gray-200 text-gray-900 [color-scheme:light]'
+                                   }`}
+                                 />
+                                 <i className="far fa-clock absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Course Description */}
+                  <div className="space-y-2 flex-1 flex flex-col">
+                    <label className={`block text-[13px] font-semibold text-gray-700 dark:text-gray-300`}>{t('courseDescription') || 'Course Description'}</label>
+                    <textarea value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Briefly describe the course objectives..."
+                      className={`w-full flex-1 min-h-[140px] px-4 py-3 rounded-xl border text-[15px] focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all resize-none ${
+                        isDarkMode ? 'bg-[#151515] border-white/10 text-white placeholder-gray-600' : 'bg-gray-50/50 border-gray-200 text-gray-900 placeholder-gray-400'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Info Box */}
+                  <div className={`p-4 rounded-xl flex items-start gap-3 mt-4 ${isDarkMode ? 'bg-blue-500/10 text-blue-200' : 'bg-blue-50 text-blue-800'}`}>
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-blue-500 text-[#1e1e1e]' : 'bg-blue-600 text-white'}`}>
+                      <i className="fas fa-info text-[10px]"></i>
+                    </div>
+                    <p className="text-[13px] leading-relaxed">Notifications will be sent to all enrolled students automatically.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className={`pt-6 mt-2 border-t flex justify-end items-center gap-4 ${isDarkMode ? 'border-white/10' : 'border-gray-100'}`}>
+                <button type="button" onClick={closeClassFormModal} className={`px-6 py-2.5 text-[15px] font-bold transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-800'}`}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={isSubmitting || !formData.name.trim()}
+                  className="px-8 py-2.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-[15px] font-bold transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20">
+                  {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white/80"></div> : <i className="fas fa-check-circle"></i>}
+                  {editingClassId ? t('save') : 'Add Class'}
                 </button>
               </div>
-
-              {/* Submit */}
-              <button type="submit" disabled={isSubmitting || !formData.name.trim()}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2">
-                {isSubmitting ? (
-                  <><div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div> {t('saving')}</>
-                ) : editingClassId ? t('save') : t('addClass')}
-              </button>
             </form>
           </div>
         </div>
@@ -663,8 +838,8 @@ const CoursesPage = () => {
                     </div>
                   )}
                 </div>
-            </div>
-            <div className="flex items-center gap-2">
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => openEditClassModal(selectedClass)}
                   className="text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/80 transition-colors cursor-pointer"
@@ -676,20 +851,8 @@ const CoursesPage = () => {
                   className="text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer" title={t('deleteClass')}>
                   <i className="fas fa-trash"></i>
                 </button>
-                <button onClick={() => { setShowDetailModal(false); setSelectedClass(null); }}
-                  className="text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors cursor-pointer">
-                  <i className="fas fa-times"></i>
-                </button>
               </div>
             </div>
-
-            {/* Room / Time */}
-            {selectedClass.room && (
-              <p className="text-sm mt-2 text-gray-500 dark:text-white/50"><i className="fas fa-map-marker-alt mr-1.5 text-gray-400 dark:text-white/30"></i>{selectedClass.room}</p>
-            )}
-            {selectedClass.time && (
-              <p className="text-sm mt-1 text-gray-500 dark:text-white/50"><i className="far fa-clock mr-1.5 text-gray-400 dark:text-white/30"></i>{selectedClass.time}</p>
-            )}
 
             {/* Links */}
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/[0.08]">
@@ -776,4 +939,3 @@ const CoursesPage = () => {
 };
 
 export default CoursesPage;
-

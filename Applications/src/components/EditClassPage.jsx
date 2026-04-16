@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useLang } from '../contexts/LanguageContext'
 import ClassForm from './forms/ClassForm'
 
@@ -30,41 +30,22 @@ export default function EditClassPage({
   })
   
   const [links, setLinks] = useState(cls?.links || [])
-  const [editingLinkIndex, setEditingLinkIndex] = useState(null)
 
-  // Reset form when class changes
-  useEffect(() => {
-    if (cls) {
-      setName(cls.name || '')
-      setRoom(cls.room || '')
-      setIcon(normalizeIcon(cls.icon))
-      if (cls?.schedules?.length) {
-        setSchedules(cls.schedules)
-      } else if (cls?.days?.length) {
-        setSchedules(cls.days.map(d => ({ day: d.toLowerCase(), time: cls.time || '' })))
-      } else {
-        setSchedules([])
-      }
-      setLinks(cls?.links || [])
-    }
-  }, [cls])
-
-  const handleLinkSave = (linkData) => {
-    if (editingLinkIndex === null) return
-    if (editingLinkIndex === -1) {
-      setLinks(prev => [...prev, linkData])
+  // Reset form when class changes (React-recommended pattern: adjust state during render)
+  const prevClsRef = useRef(cls);
+  if (prevClsRef.current !== cls && cls) {
+    prevClsRef.current = cls;
+    setName(cls.name || '');
+    setRoom(cls.room || '');
+    setIcon(normalizeIcon(cls.icon));
+    if (cls?.schedules?.length) {
+      setSchedules(cls.schedules);
+    } else if (cls?.days?.length) {
+      setSchedules(cls.days.map(d => ({ day: d.toLowerCase(), time: cls.time || '' })));
     } else {
-      setLinks(prev => {
-        const newLinks = [...prev]
-        newLinks[editingLinkIndex] = linkData
-        return newLinks
-      })
+      setSchedules([]);
     }
-    setEditingLinkIndex(null)
-  }
-
-  const removeLink = (index) => {
-    setLinks(prev => prev.filter((_, i) => i !== index))
+    setLinks(cls?.links || []);
   }
 
   const handleSubmit = async (data) => {

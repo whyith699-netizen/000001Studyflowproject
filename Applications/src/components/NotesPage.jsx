@@ -2228,7 +2228,10 @@ const NotesPage = () => {
         collapsed={sidebarCollapsed}
         onToggleCollapse={onToggleCollapse}
       />
-      <main className="flex-1 flex flex-col h-full overflow-hidden pb-20 md:pb-0">
+      <main
+        className="flex-1 flex flex-col h-full overflow-hidden pb-20 md:pb-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
+      >
         <div className="flex-1 min-h-0 w-full px-3 py-3 md:px-4 md:py-4 flex flex-col gap-3">
           {isMobile ? (
             mobilePane === "list" ? (

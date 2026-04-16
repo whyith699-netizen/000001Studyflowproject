@@ -30,7 +30,10 @@ export default function useVoiceInput({
   silenceTimeout = 5000,
   continuous = false,
 } = {}) {
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported] = useState(() => {
+    if (isCapacitorApp()) return false;
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  });
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState('');
@@ -38,19 +41,6 @@ export default function useVoiceInput({
   const recognitionRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const connectionTimeoutRef = useRef(null);
-
-  // Check browser support on mount
-  useEffect(() => {
-    // Voice input is not supported in mobile apps (Capacitor)
-    if (isCapacitorApp()) {
-      setIsSupported(false);
-      return;
-    }
-
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    setIsSupported(!!SpeechRecognition);
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -197,11 +187,11 @@ export default function useVoiceInput({
       }, 5000);
 
       recognition.start();
-    } catch (err) {
+    } catch {
       setError('Failed to start voice input. Please try again.');
       setIsListening(false);
     }
-  }, [language, continuous, resetSilenceTimer]);
+  }, [language, continuous, resetSilenceTimer, isListening]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {

@@ -257,7 +257,10 @@ const SettingsPage = () => {
     <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'sf-dark-shell' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       <Sidebar user={user} />
       
-      <main className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0">
+      <main
+        className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
+      >
         <div className="flex-1 w-full px-4 py-3 md:px-6 md:py-4 flex flex-col gap-3">
           {/* Header */}
           <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
@@ -379,7 +382,10 @@ const SettingsPage = () => {
                 </div>
               </label>
               <label className={`flex items-center justify-between cursor-pointer p-3 rounded-lg transition-colors ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>Sound notifications</span>
+                <div>
+                  <span className={`block text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>{t('timerSoundAlerts')}</span>
+                  <span className={`block mt-0.5 text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('timerSoundAlertsDesc')}</span>
+                </div>
                 <div
                   onClick={() => setSettings({ ...settings, soundEnabled: !settings.soundEnabled })}
                   className={`relative w-10 h-5 rounded-full transition-colors ${

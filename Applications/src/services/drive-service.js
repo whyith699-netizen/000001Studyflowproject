@@ -6,9 +6,13 @@ import {
 
 const MAX_FILES_PER_UPLOAD = 10;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const DEFAULT_NOTES_API_BASE_URL =
+  "https://studyflow-notes-worker.studyflow-notes-azz.workers.dev";
 
 function getApiBaseUrl() {
-  return (import.meta.env.VITE_NOTES_API_BASE_URL || "").replace(/\/$/, "");
+  const configured = String(import.meta.env.VITE_NOTES_API_BASE_URL || "").trim();
+  if (configured) return configured.replace(/\/$/, "");
+  return DEFAULT_NOTES_API_BASE_URL;
 }
 
 async function getFirebaseToken() {
