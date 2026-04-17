@@ -1,7 +1,7 @@
 {
   "name": "study-flow-app",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,10 @@
     "cap:sync:android": "npm run build:mobile && npx cap sync android",
     "cap:sync:ios": "npm run build:mobile && npx cap sync ios",
     "cap:open": "npx cap open android",
-    "cap:open:ios": "npx cap open ios"
+    "cap:open:ios": "npx cap open ios",
+    "electron:dev": "set ELECTRON_BUILD=true && vite build && electron .",
+    "electron:build:win": "set ELECTRON_BUILD=true && vite build && electron-builder --win",
+    "electron:build:mac": "set ELECTRON_BUILD=true && vite build && electron-builder --mac"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
@@ -59,6 +62,9 @@
     "globals": "^16.5.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.4",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "electron-store": "^10.0.0"
   }
 }

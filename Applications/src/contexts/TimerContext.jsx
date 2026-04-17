@@ -569,6 +569,41 @@ export const TimerProvider = ({ children }) => {
     return () => window.removeEventListener("message", handleWindowMessage);
   }, [isRunning, resetTimer, switchMode, syncTimerStateToRequester, toggleTimer]);
 
+  // Electron IPC bridge — purely additive, no UI change
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api) return undefined;
+
+    // Send timer state to main process for tray display
+    const interval = setInterval(() => {
+      api.sendTimerState({
+        isRunning,
+        timeLeft,
+        timerMode,
+        hours,
+        minutes,
+        seconds,
+        currentModeDuration,
+      });
+    }, 1000);
+
+    // Listen for timer actions from main process (hotkeys / tray menu)
+    api.onTimerAction((action) => {
+      switch (action) {
+        case "toggle":
+          toggleTimer();
+          break;
+        case "reset":
+          resetTimer();
+          break;
+        default:
+          break;
+      }
+    });
+
+    return () => clearInterval(interval);
+  }, [isRunning, timeLeft, timerMode, hours, minutes, seconds, currentModeDuration, toggleTimer, resetTimer]);
+
   return (
     <TimerContext.Provider
       value={{

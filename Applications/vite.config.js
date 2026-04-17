@@ -19,16 +19,17 @@ const normalizeBasePath = (value) => {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const isCapacitor = (env.CAPACITOR_BUILD || process.env.CAPACITOR_BUILD || '').trim() === 'true'
+  const isElectron = (env.ELECTRON_BUILD || process.env.ELECTRON_BUILD || '').trim() === 'true'
   const isGhPages = mode === 'ghpages'
   const configuredBase = env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || '/'
-  const base = isCapacitor ? './' : normalizeBasePath(configuredBase)
+  const base = (isCapacitor || isElectron) ? './' : normalizeBasePath(configuredBase)
 
   return {
     plugins: [
       react(),
       tailwindcss(),
       VitePWA({
-        disable: isCapacitor || isGhPages,
+        disable: isCapacitor || isElectron || isGhPages,
         registerType: 'autoUpdate',
         includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
