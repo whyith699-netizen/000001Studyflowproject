@@ -363,7 +363,7 @@ const Timer = ({ mode = "compact", onTimeUpdate, hideBreakTabs = false, onPopup 
             <strong
               className={`ml-1 ${isDarkMode ? "text-white" : "text-gray-900"}`}
             >
-              {selectedTask?.text || "No task selected"}
+              {selectedTask?.title || selectedTask?.text || "No task selected"}
             </strong>
           </span>
           <button
@@ -445,7 +445,7 @@ const Timer = ({ mode = "compact", onTimeUpdate, hideBreakTabs = false, onPopup 
                     <span
                       className={`font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`}
                     >
-                      {task.text}
+                      {task.title || task.text || "Untitled Task"}
                     </span>
                     {task.dueDate && (
                       <span className="block text-xs text-gray-500 mt-1">
