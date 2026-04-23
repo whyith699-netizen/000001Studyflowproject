@@ -147,14 +147,25 @@ const toDateKey = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
-const normalizeTaskRecord = (task) => {
+const buildClassNameMap = (classes = []) =>
+  new Map(
+    classes
+      .filter((item) => item?.id && item?.name)
+      .map((item) => [item.id, sanitize(item.name, 100)]),
+  );
+
+const normalizeTaskRecord = (task, classNameMap = new Map()) => {
   const title = sanitize(task?.title || task?.text, 500);
   const text = sanitize(task?.text || title, 500);
+  const resolvedClassName =
+    sanitize(task?.className || "", 100) ||
+    (task?.classId ? classNameMap.get(task.classId) || null : null);
 
   return {
     ...task,
     title,
     text,
+    className: resolvedClassName,
   };
 };
 
@@ -167,11 +178,21 @@ export const tasksService = {
     if (!user) throw new Error("Must be logged in");
 
     const tasksRef = collection(db, "users", user.uid, "tasks");
-    const snapshot = await getDocs(tasksRef);
+    const classesRef = collection(db, "users", user.uid, "classes");
+    const [taskSnapshot, classSnapshot] = await Promise.all([
+      getDocs(tasksRef),
+      getDocs(classesRef),
+    ]);
+
+    const classes = [];
+    classSnapshot.forEach((doc) => {
+      classes.push({ id: doc.id, ...doc.data() });
+    });
+    const classNameMap = buildClassNameMap(classes);
 
     const tasks = [];
-    snapshot.forEach((doc) => {
-      tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }));
+    taskSnapshot.forEach((doc) => {
+      tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }, classNameMap));
     });
 
     return tasks;
@@ -182,20 +203,48 @@ export const tasksService = {
     if (!user) return () => {};
 
     const tasksRef = collection(db, "users", user.uid, "tasks");
+    const classesRef = collection(db, "users", user.uid, "classes");
 
-    return onSnapshot(
+    let currentTasks = [];
+    let classNameMap = new Map();
+
+    const emitTasks = () => {
+      callback(currentTasks.map((task) => normalizeTaskRecord(task, classNameMap)));
+    };
+
+    const unsubTasks = onSnapshot(
       tasksRef,
       (snapshot) => {
-        const tasks = [];
+        currentTasks = [];
         snapshot.forEach((doc) => {
-          tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }));
+          currentTasks.push({ id: doc.id, ...doc.data() });
         });
-        callback(tasks);
+        emitTasks();
       },
       (error) => {
         console.error("Tasks subscription error:", error);
       },
     );
+
+    const unsubClasses = onSnapshot(
+      classesRef,
+      (snapshot) => {
+        const classes = [];
+        snapshot.forEach((doc) => {
+          classes.push({ id: doc.id, ...doc.data() });
+        });
+        classNameMap = buildClassNameMap(classes);
+        emitTasks();
+      },
+      (error) => {
+        console.error("Classes subscription error:", error);
+      },
+    );
+
+    return () => {
+      unsubTasks();
+      unsubClasses();
+    };
   },
 
   async addTask(taskData) {
