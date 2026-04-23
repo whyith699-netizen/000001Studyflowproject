@@ -147,6 +147,17 @@ const toDateKey = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const normalizeTaskRecord = (task) => {
+  const title = sanitize(task?.title || task?.text, 500);
+  const text = sanitize(task?.text || title, 500);
+
+  return {
+    ...task,
+    title,
+    text,
+  };
+};
+
 /**
  * Tasks Service
  */
@@ -160,7 +171,7 @@ export const tasksService = {
 
     const tasks = [];
     snapshot.forEach((doc) => {
-      tasks.push({ id: doc.id, ...doc.data() });
+      tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }));
     });
 
     return tasks;
@@ -177,7 +188,7 @@ export const tasksService = {
       (snapshot) => {
         const tasks = [];
         snapshot.forEach((doc) => {
-          tasks.push({ id: doc.id, ...doc.data() });
+          tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }));
         });
         callback(tasks);
       },

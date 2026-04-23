@@ -282,7 +282,7 @@ function getPriorityLabel(priority, lang) {
 }
 
 function buildDeadlineReminderContent(task, reminderKey, lang) {
-  const taskLabel = task.text || task.title || (lang === 'id' ? 'Tugas' : 'Task');
+  const taskLabel = task.title || task.text || (lang === 'id' ? 'Tugas' : 'Task');
   const reminderLabel = getTaskReminderNotificationLabel(reminderKey, lang);
   const classLabel = task.className ? String(task.className).trim() : '';
   const priorityLabel = getPriorityLabel(task.priority, lang);

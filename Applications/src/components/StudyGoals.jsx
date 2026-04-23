@@ -150,7 +150,7 @@ const StudyGoals = () => {
                       ? isDarkMode ? 'line-through text-slate-500' : 'line-through text-gray-400'
                       : isDarkMode ? 'text-white' : 'text-gray-800'
                   }`}>
-                    {task.text || 'Untitled Task'}
+                    {task.title || task.text || 'Untitled Task'}
                   </span>
                   
                   {task.dueDate && (

@@ -261,7 +261,7 @@ export const TimerProvider = ({ children }) => {
             type: "pomodoro",
             duration: durationMinutes,
             taskId: selectedTask?.id || null,
-            taskName: selectedTask?.text || null,
+            taskName: selectedTask?.title || selectedTask?.text || null,
           });
         } catch (error) {
           console.error("Failed to save pomodoro session:", error);

@@ -192,7 +192,7 @@ const CalendarPage = () => {
         return ds
           ? {
               id: t.id,
-              title: t.text,
+              title: t.title || t.text,
               date: ds,
               endDate: ds,
               time: parseTime(t.dueDate),
