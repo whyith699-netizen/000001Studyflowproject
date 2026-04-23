@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => {
   const isCapacitor = (env.CAPACITOR_BUILD || process.env.CAPACITOR_BUILD || '').trim() === 'true'
   const isElectron = (env.ELECTRON_BUILD || process.env.ELECTRON_BUILD || '').trim() === 'true'
   const isGhPages = mode === 'ghpages'
-  const configuredBase = env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || '/'
+  // Keep GitHub Pages deploys working even when the local .env.ghpages file is intentionally untracked.
+  const configuredBase = env.VITE_BASE_PATH || process.env.VITE_BASE_PATH || (isGhPages ? '/StudyFlowDasboarduser/' : '/')
   const base = (isCapacitor || isElectron) ? './' : normalizeBasePath(configuredBase)
 
   return {
