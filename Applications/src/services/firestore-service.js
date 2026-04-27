@@ -1,6 +1,7 @@
 /**
  * Firestore Service for Study Flow Web App
  * Handles data sync with Chrome Extension via shared Firebase
+ * Optimized with Observable Cache Pattern to minimize Firebase reads.
  */
 
 import { db, auth } from "../firebase-config";
@@ -16,19 +17,19 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
-  onSnapshot,
   query,
   orderBy,
+  limit,
   serverTimestamp,
 } from "firebase/firestore";
 import { normalizeTaskReminder } from "../config/taskReminderOptions";
 
-// Generate unique ID
+// --- HELPERS ---
+
 const generateId = (prefix = "item") => {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Input validation helpers
 const sanitize = (str, maxLen = 200) => {
   if (typeof str !== "string") return "";
   return str.trim().slice(0, maxLen);
@@ -62,27 +63,13 @@ const sanitizeFilesMeta = (files, maxItems = 12) =>
 const normalizeDay = (value) => {
   const normalized = sanitize(value || "", 20).toLowerCase();
   const dayMap = {
-    mon: "monday",
-    monday: "monday",
-    senin: "monday",
-    tue: "tuesday",
-    tuesday: "tuesday",
-    selasa: "tuesday",
-    wed: "wednesday",
-    wednesday: "wednesday",
-    rabu: "wednesday",
-    thu: "thursday",
-    thursday: "thursday",
-    kamis: "thursday",
-    fri: "friday",
-    friday: "friday",
-    jumat: "friday",
-    sat: "saturday",
-    saturday: "saturday",
-    sabtu: "saturday",
-    sun: "sunday",
-    sunday: "sunday",
-    minggu: "sunday",
+    mon: "monday", monday: "monday", senin: "monday",
+    tue: "tuesday", tuesday: "tuesday", selasa: "tuesday",
+    wed: "wednesday", wednesday: "wednesday", rabu: "wednesday",
+    thu: "thursday", thursday: "thursday", kamis: "thursday",
+    fri: "friday", friday: "friday", jumat: "friday",
+    sat: "saturday", saturday: "saturday", sabtu: "saturday",
+    sun: "sunday", sunday: "sunday", minggu: "sunday",
   };
   return dayMap[normalized] || null;
 };
@@ -94,8 +81,7 @@ const sanitizeSchedules = (schedules, maxItems = 20) =>
       const startTime = sanitize(entry?.startTime || "", 5);
       const endTime = sanitize(entry?.endTime || "", 5);
       const fallbackTime = sanitize(entry?.time || "", 20);
-      const time =
-        fallbackTime || (startTime && endTime ? `${startTime} - ${endTime}` : "");
+      const time = fallbackTime || (startTime && endTime ? `${startTime} - ${endTime}` : "");
       if (!day) return null;
       return { day, time: time || "", startTime, endTime };
     })
@@ -118,13 +104,8 @@ const sanitizeStudyTools = (items, maxItems = 40) =>
     .map((item) => {
       const launchUrl = sanitizeUrl(item?.launchUrl || item?.url);
       if (!launchUrl) return null;
-
       const canEmbed = Boolean(item?.canEmbed);
-      const category = canEmbed ? "embedded" : "external";
-      const embedUrl = canEmbed
-        ? sanitizeUrl(item?.embedUrl || launchUrl) || launchUrl
-        : "";
-
+      const embedUrl = canEmbed ? sanitizeUrl(item?.embedUrl || launchUrl) || launchUrl : "";
       return {
         id: sanitize(item?.id || "", 120),
         name: sanitize(item?.name || "", 120),
@@ -132,7 +113,7 @@ const sanitizeStudyTools = (items, maxItems = 40) =>
         launchUrl,
         embedUrl,
         canEmbed,
-        category,
+        category: canEmbed ? "embedded" : "external",
         icon: sanitize(item?.icon || "", 60) || null,
         createdAt: Number.isFinite(item?.createdAt) ? item.createdAt : Date.now(),
         updatedAt: Number.isFinite(item?.updatedAt) ? item.updatedAt : Date.now(),
@@ -140,111 +121,95 @@ const sanitizeStudyTools = (items, maxItems = 40) =>
     })
     .filter((item) => item && item.id && item.name);
 
-const toDateKey = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const buildClassNameMap = (classes = []) =>
-  new Map(
-    classes
-      .filter((item) => item?.id && item?.name)
-      .map((item) => [item.id, sanitize(item.name, 100)]),
-  );
+  new Map(classes.filter(i => i?.id && i?.name).map(i => [i.id, sanitize(i.name, 100)]));
 
 const normalizeTaskRecord = (task, classNameMap = new Map()) => {
   const title = sanitize(task?.title || task?.text, 500);
   const text = sanitize(task?.text || title, 500);
-  const resolvedClassName =
-    sanitize(task?.className || "", 100) ||
-    (task?.classId ? classNameMap.get(task.classId) || null : null);
-
-  return {
-    ...task,
-    title,
-    text,
-    className: resolvedClassName,
-  };
+  const resolvedClassName = sanitize(task?.className || "", 100) || (task?.classId ? classNameMap.get(task.classId) || null : null);
+  return { ...task, title, text, className: resolvedClassName };
 };
+
+// --- OBSERVABLE STATE UTILITY ---
+
+class ObservableState {
+  constructor(initialData = null) {
+    this.data = initialData;
+    this.listeners = new Set();
+    this.lastFetched = 0;
+    this.ttl = 300000; // 5 minutes cache TTL
+  }
+
+  subscribe(callback) {
+    this.listeners.add(callback);
+    if (this.data !== null) callback(this.data);
+    return () => this.listeners.delete(callback);
+  }
+
+  notify(newData) {
+    this.data = newData;
+    this.listeners.forEach(cb => cb(this.data));
+  }
+
+  isExpired() {
+    return Date.now() - this.lastFetched > this.ttl;
+  }
+
+  markFetched() {
+    this.lastFetched = Date.now();
+  }
+
+  clear() {
+    this.data = null;
+    this.lastFetched = 0;
+  }
+}
+
+// Global state instances
+const tasksState = new ObservableState([]);
+const classesState = new ObservableState([]);
+const profileState = new ObservableState(null);
+const sessionsState = new ObservableState([]);
+const uniformsState = new ObservableState({});
+const toolsState = new ObservableState([]);
+const eventsState = new ObservableState([]);
+
+// --- SERVICES ---
 
 /**
  * Tasks Service
  */
 export const tasksService = {
-  async getTasks() {
+  async fetchAll() {
     const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
+    if (!user) return;
 
     const tasksRef = collection(db, "users", user.uid, "tasks");
     const classesRef = collection(db, "users", user.uid, "classes");
-    const [taskSnapshot, classSnapshot] = await Promise.all([
+
+    const [taskSnap, classSnap] = await Promise.all([
       getDocs(tasksRef),
-      getDocs(classesRef),
+      getDocs(classesRef)
     ]);
 
     const classes = [];
-    classSnapshot.forEach((doc) => {
-      classes.push({ id: doc.id, ...doc.data() });
-    });
+    classSnap.forEach(doc => classes.push({ id: doc.id, ...doc.data() }));
+    classesState.notify(classes);
+    classesState.markFetched();
+
     const classNameMap = buildClassNameMap(classes);
-
     const tasks = [];
-    taskSnapshot.forEach((doc) => {
-      tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }, classNameMap));
-    });
+    taskSnap.forEach(doc => tasks.push(normalizeTaskRecord({ id: doc.id, ...doc.data() }, classNameMap)));
 
+    tasksState.notify(tasks);
+    tasksState.markFetched();
     return tasks;
   },
 
   subscribeToTasks(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const tasksRef = collection(db, "users", user.uid, "tasks");
-    const classesRef = collection(db, "users", user.uid, "classes");
-
-    let currentTasks = [];
-    let classNameMap = new Map();
-
-    const emitTasks = () => {
-      callback(currentTasks.map((task) => normalizeTaskRecord(task, classNameMap)));
-    };
-
-    const unsubTasks = onSnapshot(
-      tasksRef,
-      (snapshot) => {
-        currentTasks = [];
-        snapshot.forEach((doc) => {
-          currentTasks.push({ id: doc.id, ...doc.data() });
-        });
-        emitTasks();
-      },
-      (error) => {
-        console.error("Tasks subscription error:", error);
-      },
-    );
-
-    const unsubClasses = onSnapshot(
-      classesRef,
-      (snapshot) => {
-        const classes = [];
-        snapshot.forEach((doc) => {
-          classes.push({ id: doc.id, ...doc.data() });
-        });
-        classNameMap = buildClassNameMap(classes);
-        emitTasks();
-      },
-      (error) => {
-        console.error("Classes subscription error:", error);
-      },
-    );
-
-    return () => {
-      unsubTasks();
-      unsubClasses();
-    };
+    if (tasksState.isExpired()) this.fetchAll().catch(console.error);
+    return tasksState.subscribe(callback);
   },
 
   async addTask(taskData) {
@@ -252,48 +217,35 @@ export const tasksService = {
     if (!user) throw new Error("Must be logged in");
 
     const title = sanitize(taskData.title || taskData.text, 500);
-    if (!title) throw new Error("Task title is required");
-
     const taskId = generateId("task");
     const taskRef = doc(db, "users", user.uid, "tasks", taskId);
 
     let uploadedFiles = [];
-    let attachmentErrors = [];
     if (Array.isArray(taskData.newFiles) && taskData.newFiles.length > 0) {
-      const uploadResult = await uploadTaskAttachments(
-        taskId,
-        taskData.newFiles,
-      );
-      uploadedFiles = uploadResult.uploaded;
-      attachmentErrors = uploadResult.failed;
+      const res = await uploadTaskAttachments(taskId, taskData.newFiles);
+      uploadedFiles = res.uploaded;
     }
 
-    const normalizedReminder = taskData.dueDate
-      ? normalizeTaskReminder(taskData.reminder)
-      : "none";
-
     const newTask = {
-      id: taskId,
-      text: title,
-      title,
-      completed: false,
-      type: taskData.type || "individual",
-      classId: taskData.classId || null,
+      id: taskId, text: title, title, completed: false,
+      type: taskData.type || "individual", classId: taskData.classId || null,
       className: taskData.className ? sanitize(taskData.className) : null,
-      priority: ["low", "medium", "high"].includes(taskData.priority)
-        ? taskData.priority
-        : "medium",
-      dueDate: taskData.dueDate || null,
+      priority: taskData.priority || "medium", dueDate: taskData.dueDate || null,
       description: sanitize(taskData.description || "", 1200),
       links: sanitizeLinks(taskData.links || []),
       files: [...sanitizeFilesMeta(taskData.files || []), ...uploadedFiles],
-      reminder: normalizedReminder,
-      createdAt: Date.now(),
-      updatedAt: serverTimestamp(),
+      reminder: taskData.dueDate ? normalizeTaskReminder(taskData.reminder) : "none",
+      createdAt: Date.now(), updatedAt: Date.now()
     };
 
-    await setDoc(taskRef, newTask);
-    return { ...newTask, attachmentErrors };
+    await setDoc(taskRef, { ...newTask, updatedAt: serverTimestamp() });
+
+    // Update local state instantly
+    const classNameMap = buildClassNameMap(classesState.data);
+    const updatedTasks = [normalizeTaskRecord(newTask, classNameMap), ...tasksState.data];
+    tasksState.notify(updatedTasks);
+
+    return newTask;
   },
 
   async updateTask(taskId, updates) {
@@ -301,53 +253,38 @@ export const tasksService = {
     if (!user) throw new Error("Must be logged in");
 
     const taskRef = doc(db, "users", user.uid, "tasks", taskId);
-    const taskSnap = await getDoc(taskRef);
-    const existing = taskSnap.exists() ? taskSnap.data() : {};
-    let nextFiles = sanitizeFilesMeta(
-      updates.files !== undefined ? updates.files : existing.files || [],
-    );
-
+    const existing = tasksState.data.find(t => t.id === taskId) || {};
+    
+    let nextFiles = sanitizeFilesMeta(updates.files !== undefined ? updates.files : existing.files || []);
     if (Array.isArray(updates.newFiles) && updates.newFiles.length > 0) {
-      const uploadResult = await uploadTaskAttachments(
-        taskId,
-        updates.newFiles,
-      );
-      nextFiles = [...nextFiles, ...uploadResult.uploaded];
+      const res = await uploadTaskAttachments(taskId, updates.newFiles);
+      nextFiles = [...nextFiles, ...res.uploaded];
     }
 
-    const nextTitle =
-      updates.title !== undefined || updates.text !== undefined
-        ? sanitize(updates.title || updates.text, 500)
-        : null;
+    const nextTitle = (updates.title || updates.text) ? sanitize(updates.title || updates.text, 500) : null;
+    const nextDueDate = updates.dueDate !== undefined ? updates.dueDate : existing.dueDate;
 
     const payload = {
       ...updates,
-      updatedAt: serverTimestamp(),
+      files: nextFiles,
+      updatedAt: serverTimestamp()
     };
-    const nextDueDate =
-      updates.dueDate !== undefined
-        ? updates.dueDate || null
-        : existing.dueDate || null;
-
-    if (nextTitle !== null) {
-      payload.title = nextTitle;
-      payload.text = nextTitle;
-    }
-    if (updates.description !== undefined)
-      payload.description = sanitize(updates.description || "", 1200);
-    if (updates.links !== undefined)
-      payload.links = sanitizeLinks(updates.links || []);
-    payload.files = nextFiles;
+    if (nextTitle) { payload.title = nextTitle; payload.text = nextTitle; }
+    if (updates.description !== undefined) payload.description = sanitize(updates.description, 1200);
+    if (updates.links !== undefined) payload.links = sanitizeLinks(updates.links);
     if (updates.reminder !== undefined || updates.dueDate !== undefined) {
-      const requestedReminder =
-        updates.reminder !== undefined ? updates.reminder : existing.reminder;
-      payload.reminder = nextDueDate
-        ? normalizeTaskReminder(requestedReminder)
-        : "none";
+      payload.reminder = nextDueDate ? normalizeTaskReminder(updates.reminder || existing.reminder) : "none";
     }
 
     delete payload.newFiles;
     await updateDoc(taskRef, payload);
+
+    // Update local state instantly
+    const classNameMap = buildClassNameMap(classesState.data);
+    const updatedTasks = tasksState.data.map(t =>
+      t.id === taskId ? normalizeTaskRecord({ ...t, ...updates, files: nextFiles, updatedAt: Date.now() }, classNameMap) : t
+    );
+    tasksState.notify(updatedTasks);
   },
 
   async toggleTask(taskId, completed) {
@@ -359,566 +296,300 @@ export const tasksService = {
     if (!user) throw new Error("Must be logged in");
 
     const taskRef = doc(db, "users", user.uid, "tasks", taskId);
-    const taskSnap = await getDoc(taskRef);
-    if (taskSnap.exists()) {
-      const data = taskSnap.data();
-      await deleteTaskAttachments(data.files || []);
-    }
+    const task = tasksState.data.find(t => t.id === taskId);
+    if (task) await deleteTaskAttachments(task.files || []);
+
     await deleteDoc(taskRef);
-  },
+
+    // Update local state instantly
+    tasksState.notify(tasksState.data.filter(t => t.id !== taskId));
+  }
 };
 
 /**
  * Classes Service
  */
 export const classesService = {
-  async getClasses() {
+  async fetchAll() {
     const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
-    const classesRef = collection(db, "users", user.uid, "classes");
-    const snapshot = await getDocs(classesRef);
-
+    if (!user) return;
+    const ref = collection(db, "users", user.uid, "classes");
+    const snap = await getDocs(ref);
     const classes = [];
-    snapshot.forEach((doc) => {
-      classes.push({ id: doc.id, ...doc.data() });
-    });
-
+    snap.forEach(doc => classes.push({ id: doc.id, ...doc.data() }));
+    classesState.notify(classes);
+    classesState.markFetched();
     return classes;
   },
 
   subscribeToClasses(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const classesRef = collection(db, "users", user.uid, "classes");
-
-    return onSnapshot(
-      classesRef,
-      (snapshot) => {
-        const classes = [];
-        snapshot.forEach((doc) => {
-          classes.push({ id: doc.id, ...doc.data() });
-        });
-        callback(classes);
-      },
-      (error) => {
-        console.error("Classes subscription error:", error);
-      },
-    );
+    if (classesState.isExpired()) this.fetchAll().catch(console.error);
+    return classesState.subscribe(callback);
   },
 
   async addClass(classData) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
 
-    const name = sanitize(classData.name, 100);
-    if (!name) throw new Error("Class name is required");
-
-    const schedules = sanitizeSchedules(classData.schedules || []);
-    const normalizedDays =
-      schedules.length > 0
-        ? [...new Set(schedules.map((entry) => entry.day))]
-        : sanitizeArray(classData.days || [], 7)
-            .map(normalizeDay)
-            .filter(Boolean);
-    const fallbackTime = sanitize(classData.time || "", 20);
-    const resolvedTime = schedules[0]?.time || fallbackTime || "";
-
     const classId = generateId("class");
     const classRef = doc(db, "users", user.uid, "classes", classId);
+    const schedules = sanitizeSchedules(classData.schedules || []);
 
     const newClass = {
       id: classId,
-      name,
+      name: sanitize(classData.name, 100),
       icon: sanitize(classData.icon || "fa-graduation-cap", 50),
-      days: normalizedDays,
+      days: schedules.length > 0 ? [...new Set(schedules.map(s => s.day))] : (classData.days || []),
       schedules,
-      time: resolvedTime,
+      time: schedules[0]?.time || sanitize(classData.time || "", 20),
       links: sanitizeLinks(classData.links || []),
       room: sanitize(classData.room || "", 50),
       color: classData.color || "#3B82F6",
       createdAt: Date.now(),
-      updatedAt: serverTimestamp(),
+      updatedAt: Date.now()
     };
 
-    await setDoc(classRef, newClass);
+    await setDoc(classRef, { ...newClass, updatedAt: serverTimestamp() });
+    classesState.notify([...classesState.data, newClass]);
     return newClass;
   },
 
   async updateClass(classId, updates) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const classRef = doc(db, "users", user.uid, "classes", classId);
-    const payload = {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    };
-
-    if (updates.name !== undefined) payload.name = sanitize(updates.name, 100);
-    if (updates.icon !== undefined)
-      payload.icon = sanitize(updates.icon || "fa-graduation-cap", 50);
-    if (updates.room !== undefined)
-      payload.room = sanitize(updates.room || "", 50);
-    if (updates.links !== undefined)
-      payload.links = sanitizeLinks(updates.links || []);
-
-    if (updates.schedules !== undefined) {
-      const schedules = sanitizeSchedules(updates.schedules || []);
-      payload.schedules = schedules;
-      payload.days = [...new Set(schedules.map((entry) => entry.day))];
-      payload.time =
-        schedules[0]?.time || sanitize(updates.time || "", 20) || "";
-    } else if (updates.days !== undefined) {
-      payload.days = sanitizeArray(updates.days || [], 7)
-        .map(normalizeDay)
-        .filter(Boolean);
-      if (updates.time !== undefined)
-        payload.time = sanitize(updates.time || "", 20);
+    const ref = doc(db, "users", user.uid, "classes", classId);
+    
+    const payload = { ...updates, updatedAt: serverTimestamp() };
+    if (updates.schedules) {
+      const s = sanitizeSchedules(updates.schedules);
+      payload.schedules = s;
+      payload.days = [...new Set(s.map(i => i.day))];
+      payload.time = s[0]?.time || "";
     }
 
-    await updateDoc(classRef, payload);
+    await updateDoc(ref, payload);
+    classesState.notify(classesState.data.map(c => c.id === classId ? { ...c, ...updates, updatedAt: Date.now() } : c));
   },
 
   async deleteClass(classId) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const classRef = doc(db, "users", user.uid, "classes", classId);
-    await deleteDoc(classRef);
-  },
+    await deleteDoc(doc(db, "users", user.uid, "classes", classId));
+    classesState.notify(classesState.data.filter(c => c.id !== classId));
+  }
 };
 
 /**
  * User Profile Service
  */
 export const userService = {
-  async getProfile() {
+  async fetchProfile() {
     const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
+    if (!user) return;
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : null;
+    profileState.notify(data);
+    profileState.markFetched();
+    return data;
+  },
 
-    const userRef = doc(db, "users", user.uid);
-    const snapshot = await getDoc(userRef);
+  async getProfile() {
+    if (profileState.isExpired() || !profileState.data) await this.fetchProfile();
+    return profileState.data;
+  },
 
-    if (snapshot.exists()) {
-      return snapshot.data();
-    }
-    return null;
+  subscribeToProfile(callback) {
+    if (profileState.isExpired()) this.fetchProfile().catch(console.error);
+    return profileState.subscribe(callback);
   },
 
   async updateProfile(updates) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const userRef = doc(db, "users", user.uid);
-    const snapshot = await getDoc(userRef);
-    const payload = {
-      ...updates,
-      lastSync: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
-
-    if (!snapshot.exists()) {
-      payload.createdAt = serverTimestamp();
-    }
-
-    await setDoc(userRef, payload, { merge: true });
-  },
-
-  subscribeToProfile(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const userRef = doc(db, "users", user.uid);
-    return onSnapshot(
-      userRef,
-      (snapshot) => {
-        callback(snapshot.exists() ? snapshot.data() : null);
-      },
-      (error) => {
-        console.error("Profile subscription error:", error);
-      },
-    );
-  },
-
-  async updateLoginStreak() {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
-    const userRef = doc(db, "users", user.uid);
-    const snapshot = await getDoc(userRef);
-    const userData = snapshot.exists() ? snapshot.data() : {};
-
-    const today = toDateKey();
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = toDateKey(yesterdayDate);
-
-    const previousDate = userData.lastLoginStreakDate || null;
-    const currentStreak = Number.parseInt(userData.streak, 10);
-    let nextStreak = Number.isNaN(currentStreak) ? 0 : currentStreak;
-
-    if (previousDate === today) {
-      // Already counted today.
-    } else if (previousDate === yesterday) {
-      nextStreak += 1;
-    } else {
-      nextStreak = 1;
-    }
-
-    await setDoc(
-      userRef,
-      {
-        streak: nextStreak,
-        lastLoginStreakDate: today,
-        lastLogin: new Date().toISOString(),
-        lastSync: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    const ref = doc(db, "users", user.uid);
+    const payload = { ...updates, lastSync: serverTimestamp(), updatedAt: serverTimestamp() };
+    await setDoc(ref, payload, { merge: true });
+    profileState.notify({ ...profileState.data, ...updates });
   },
 
   async claimLoginStreak() {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    const userData = snap.exists() ? snap.data() : {};
 
-    const userRef = doc(db, "users", user.uid);
-    const snapshot = await getDoc(userRef);
-    const userData = snapshot.exists() ? snapshot.data() : {};
+    const today = new Date().toISOString().split('T')[0];
+    if (userData.lastStreakClaimDate === today) return { alreadyClaimed: true, streak: userData.streak };
 
-    const today = toDateKey();
-    const yesterdayDate = new Date();
-    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterday = toDateKey(yesterdayDate);
-
-    const alreadyClaimed = userData.lastStreakClaimDate === today;
-    if (alreadyClaimed) {
-      return {
-        alreadyClaimed: true,
-        streak: Number.parseInt(userData.streak, 10) || 0,
-      };
-    }
-
-    const previousDate = userData.lastLoginStreakDate || null;
-    const currentStreak = Number.parseInt(userData.streak, 10);
-    let nextStreak = Number.isNaN(currentStreak) ? 0 : currentStreak;
-
-    if (previousDate === yesterday) {
-      nextStreak += 1;
-    } else if (previousDate === today) {
-      nextStreak = nextStreak || 1;
-    } else {
-      nextStreak = 1;
-    }
-
-    await setDoc(
-      userRef,
-      {
-        streak: nextStreak,
-        lastLoginStreakDate: today,
-        lastStreakClaimDate: today,
-        lastLogin: new Date().toISOString(),
-        lastSync: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-    return {
-      alreadyClaimed: false,
-      streak: nextStreak,
-    };
-  },
+    const nextStreak = (userData.streak || 0) + 1;
+    const updates = { streak: nextStreak, lastLoginStreakDate: today, lastStreakClaimDate: today, updatedAt: serverTimestamp() };
+    await setDoc(ref, updates, { merge: true });
+    
+    profileState.notify({ ...profileState.data, ...updates });
+    return { alreadyClaimed: false, streak: nextStreak };
+  }
 };
 
 /**
  * Study Sessions Service
  */
 export const studySessionsService = {
-  subscribeToSessions(callback) {
+  async fetchSessions() {
     const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const sessionsRef = collection(db, "users", user.uid, "studySessions");
-    const q = query(sessionsRef, orderBy("completedAt", "desc"));
-
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        const sessions = [];
-        snapshot.forEach((doc) => {
-          sessions.push({ id: doc.id, ...doc.data() });
-        });
-        callback(sessions);
-      },
-      (error) => {
-        console.error("Sessions subscription error:", error);
-      },
-    );
+    if (!user) return;
+    const ref = collection(db, "users", user.uid, "studySessions");
+    const q = query(ref, orderBy("completedAt", "desc"), limit(50));
+    const snap = await getDocs(q);
+    const sessions = [];
+    snap.forEach(doc => sessions.push({ id: doc.id, ...doc.data() }));
+    sessionsState.notify(sessions);
+    sessionsState.markFetched();
+    return sessions;
   },
 
-  async getSessionsForWeek() {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
-    const sessionsRef = collection(db, "users", user.uid, "studySessions");
-    const snapshot = await getDocs(sessionsRef);
-
-    const sessions = [];
-    snapshot.forEach((doc) => {
-      sessions.push({ id: doc.id, ...doc.data() });
-    });
-
-    return sessions;
+  subscribeToSessions(callback) {
+    if (sessionsState.isExpired()) this.fetchSessions().catch(console.error);
+    return sessionsState.subscribe(callback);
   },
 
   async addSession(sessionData) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const sessionId = generateId("session");
-    const sessionRef = doc(db, "users", user.uid, "studySessions", sessionId);
-
+    const id = generateId("session");
+    const ref = doc(db, "users", user.uid, "studySessions", id);
     const newSession = {
-      id: sessionId,
-      type: sessionData.type || "pomodoro",
-      duration: sessionData.duration || 25,
-      taskId: sessionData.taskId || null,
-      taskName: sessionData.taskName || null,
-      completedAt: Date.now(),
-      createdAt: Date.now(),
+      id, type: sessionData.type || "pomodoro", duration: sessionData.duration || 25,
+      taskId: sessionData.taskId || null, taskName: sessionData.taskName || null,
+      completedAt: Date.now(), createdAt: Date.now()
     };
-
-    await setDoc(sessionRef, newSession);
-
+    await setDoc(ref, newSession);
+    sessionsState.notify([newSession, ...sessionsState.data.slice(0, 49)]);
     return newSession;
-  },
+  }
 };
 
 /**
- * Uniforms Service - Custom uniform per day
+ * Uniforms Service
  */
 export const uniformsService = {
-  async getUniforms() {
+  async fetchUniforms() {
     const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
-    const uniformsRef = doc(db, "users", user.uid, "settings", "uniforms");
-    const snapshot = await getDoc(uniformsRef);
-
-    if (snapshot.exists()) {
-      return snapshot.data().days || {};
-    }
-    return {};
+    if (!user) return;
+    const ref = doc(db, "users", user.uid, "settings", "uniforms");
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data().days || {} : {};
+    uniformsState.notify(data);
+    uniformsState.markFetched();
+    return data;
   },
 
   subscribeToUniforms(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const uniformsRef = doc(db, "users", user.uid, "settings", "uniforms");
-
-    return onSnapshot(
-      uniformsRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          callback(snapshot.data().days || {});
-        } else {
-          callback({});
-        }
-      },
-      (error) => {
-        console.error("Uniforms subscription error:", error);
-      },
-    );
+    if (uniformsState.isExpired()) this.fetchUniforms().catch(console.error);
+    return uniformsState.subscribe(callback);
   },
 
-  async saveUniforms(uniformsData) {
+  async saveUniforms(data) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const uniformsRef = doc(db, "users", user.uid, "settings", "uniforms");
-    await setDoc(uniformsRef, {
-      days: uniformsData,
-      updatedAt: serverTimestamp(),
-    });
-  },
+    await setDoc(doc(db, "users", user.uid, "settings", "uniforms"), { days: data, updatedAt: serverTimestamp() });
+    uniformsState.notify(data);
+  }
 };
 
 /**
  * Study Tools Service
  */
 export const studyToolsService = {
-  async getStudyTools() {
+  async fetchTools() {
     const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
+    if (!user) return;
     const ref = doc(db, "users", user.uid, "settings", "studyTools");
-    const snapshot = await getDoc(ref);
-    if (!snapshot.exists()) return [];
-    return sanitizeStudyTools(snapshot.data().items || []);
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? sanitizeStudyTools(snap.data().items || []) : [];
+    toolsState.notify(data);
+    toolsState.markFetched();
+    return data;
   },
 
   subscribeToStudyTools(callback) {
-    const user = auth.currentUser;
-    if (!user) return () => {};
-
-    const ref = doc(db, "users", user.uid, "settings", "studyTools");
-    return onSnapshot(
-      ref,
-      (snapshot) => {
-        if (!snapshot.exists()) {
-          callback([]);
-          return;
-        }
-        callback(sanitizeStudyTools(snapshot.data().items || []));
-      },
-      (error) => {
-        console.error("StudyTools subscription error:", error);
-      },
-    );
+    if (toolsState.isExpired()) this.fetchTools().catch(console.error);
+    return toolsState.subscribe(callback);
   },
 
   async saveStudyTools(items) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const ref = doc(db, "users", user.uid, "settings", "studyTools");
-    const sanitizedItems = sanitizeStudyTools(items);
-    await setDoc(
-      ref,
-      {
-        items: sanitizedItems,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-    return sanitizedItems;
+    const sanitized = sanitizeStudyTools(items);
+    await setDoc(doc(db, "users", user.uid, "settings", "studyTools"), { items: sanitized, updatedAt: serverTimestamp() }, { merge: true });
+    toolsState.notify(sanitized);
+    return sanitized;
   },
 
   async upsertStudyTool(toolData) {
-    const currentItems = await this.getStudyTools();
-    const now = Date.now();
-    const nextTool = {
-      ...toolData,
-      id: toolData.id || generateId("studytool"),
-      createdAt:
-        toolData.createdAt ||
-        currentItems.find((item) => item.id === toolData.id)?.createdAt ||
-        now,
-      updatedAt: now,
-    };
-
-    const existingIndex = currentItems.findIndex((item) => item.id === nextTool.id);
-    const nextItems =
-      existingIndex >= 0
-        ? currentItems.map((item, index) =>
-            index === existingIndex ? { ...item, ...nextTool } : item,
-          )
-        : [...currentItems, nextTool];
-
-    const saved = await this.saveStudyTools(nextItems);
-    return saved.find((item) => item.id === nextTool.id) || null;
+    const current = toolsState.data;
+    const id = toolData.id || generateId("studytool");
+    const nextTool = { ...toolData, id, updatedAt: Date.now() };
+    const idx = current.findIndex(i => i.id === id);
+    const nextItems = idx >= 0 ? current.map((i, k) => k === idx ? { ...i, ...nextTool } : i) : [...current, nextTool];
+    return this.saveStudyTools(nextItems);
   },
 
-  async deleteStudyTool(toolId) {
-    const currentItems = await this.getStudyTools();
-    const nextItems = currentItems.filter((item) => item.id !== toolId);
-    await this.saveStudyTools(nextItems);
-  },
+  async deleteStudyTool(id) {
+    return this.saveStudyTools(toolsState.data.filter(i => i.id !== id));
+  }
 };
 
 /**
  * Calendar Events Service
  */
-const CALENDAR_EVENT_COLOR_KEYS = [
-  "sky",
-  "emerald",
-  "amber",
-  "rose",
-  "violet",
-  "teal",
-];
-
-const pickRandomCalendarColorKey = () =>
-  CALENDAR_EVENT_COLOR_KEYS[
-    Math.floor(Math.random() * CALENDAR_EVENT_COLOR_KEYS.length)
-  ];
-
 export const calendarEventsService = {
-  subscribeToEvents(callback) {
+  async fetchEvents() {
     const user = auth.currentUser;
-    if (!user) return () => {};
-
+    if (!user) return;
     const ref = collection(db, "users", user.uid, "calendarEvents");
     const q = query(ref, orderBy("date", "asc"));
-
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        const events = [];
-        snapshot.forEach((doc) => events.push({ id: doc.id, ...doc.data() }));
-        callback(events);
-      },
-      (error) => {
-        console.error("CalendarEvents subscription error:", error);
-      },
-    );
+    const snap = await getDocs(q);
+    const events = [];
+    snap.forEach(d => events.push({ id: d.id, ...d.data() }));
+    eventsState.notify(events);
+    eventsState.markFetched();
+    return events;
   },
 
-  async addEvent(eventData) {
+  subscribeToEvents(callback) {
+    if (eventsState.isExpired()) this.fetchEvents().catch(console.error);
+    return eventsState.subscribe(callback);
+  },
+
+  async addEvent(data) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
     const id = generateId("cal");
-    const ref = doc(db, "users", user.uid, "calendarEvents", id);
     const newEvent = {
-      id,
-      title: sanitize(eventData.title, 200),
-      colorKey: CALENDAR_EVENT_COLOR_KEYS.includes(eventData.colorKey)
-        ? eventData.colorKey
-        : pickRandomCalendarColorKey(),
-      date: eventData.date || "",
-      endDate: eventData.endDate || null,
-      time: eventData.time || "",
-      description: sanitize(eventData.description || "", 500),
-      createdAt: Date.now(),
-      updatedAt: serverTimestamp(),
+      id, title: sanitize(data.title, 200), colorKey: data.colorKey || "sky",
+      date: data.date || "", endDate: data.endDate || null, time: data.time || "",
+      description: sanitize(data.description || "", 500), createdAt: Date.now(), updatedAt: Date.now()
     };
-    await setDoc(ref, newEvent);
+    await setDoc(doc(db, "users", user.uid, "calendarEvents", id), { ...newEvent, updatedAt: serverTimestamp() });
+    eventsState.notify([...eventsState.data, newEvent].sort((a,b) => a.date.localeCompare(b.date)));
     return newEvent;
   },
 
-  async updateEvent(eventId, updates) {
+  async updateEvent(id, updates) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const ref = doc(db, "users", user.uid, "calendarEvents", eventId);
-    const payload = {
-      title: sanitize(updates.title || "", 200),
-      date: updates.date || "",
-      endDate: updates.endDate !== undefined ? updates.endDate : null,
-      time: updates.time || "",
-      description: sanitize(updates.description || "", 500),
-      updatedAt: serverTimestamp(),
-    };
-
-    if (updates.colorKey && CALENDAR_EVENT_COLOR_KEYS.includes(updates.colorKey)) {
-      payload.colorKey = updates.colorKey;
-    }
-
-    await updateDoc(ref, payload);
+    await updateDoc(doc(db, "users", user.uid, "calendarEvents", id), { ...updates, updatedAt: serverTimestamp() });
+    eventsState.notify(eventsState.data.map(e => e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e).sort((a,b) => a.date.localeCompare(b.date)));
   },
 
-  async deleteEvent(eventId) {
+  async deleteEvent(id) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-
-    const ref = doc(db, "users", user.uid, "calendarEvents", eventId);
-    await deleteDoc(ref);
-  },
+    await deleteDoc(doc(db, "users", user.uid, "calendarEvents", id));
+    eventsState.notify(eventsState.data.filter(e => e.id !== id));
+  }
 };
 
 /**
@@ -953,6 +624,15 @@ export async function deleteUserData() {
 
   const userRef = doc(db, "users", user.uid);
   await deleteDoc(userRef);
+
+  // Clear all global states
+  tasksState.clear();
+  classesState.clear();
+  profileState.clear();
+  sessionsState.clear();
+  uniformsState.clear();
+  toolsState.clear();
+  eventsState.clear();
 }
 
 export default {

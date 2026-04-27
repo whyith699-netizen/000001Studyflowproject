@@ -1,0 +1,13 @@
+.agents/
+.claude/
+.github/
+.idea/
+.superpowers/
+Backend/
+Extension/
+GItHub/
+StudyFlowDownload/
+docs/
+output/
+node_modules/
+.DS_Store

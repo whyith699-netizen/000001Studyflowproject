@@ -16,7 +16,6 @@ import {
   orderBy,
   limit,
   serverTimestamp,
-  onSnapshot,
 } from 'firebase/firestore';
 import { geminiClient } from './gemini-client';
 import { buildSystemContext, detectIntent, buildConversationHistory } from './chatbot-context';
@@ -208,21 +207,23 @@ export const chatbotService = {
     if (!sessionId) return () => {};
 
     const messagesRef = getMessagesRef(user.uid, sessionId);
-    const q = query(messagesRef, orderBy('timestamp', 'asc'));
+    // Limit messages to save reads
+    const q = query(messagesRef, orderBy('timestamp', 'asc'), limit(50));
 
-    return onSnapshot(
-      q,
-      (snapshot) => {
+    (async () => {
+      try {
+        const snapshot = await getDocs(q);
         const messages = [];
         snapshot.forEach((doc) => {
           messages.push({ id: doc.id, ...doc.data() });
         });
         callback(messages);
-      },
-      (error) => {
-        console.error('Messages subscription error:', error);
+      } catch (error) {
+        console.error('Messages fetch error:', error);
       }
-    );
+    })();
+
+    return () => {}; // No-op
   },
 
   /**

@@ -33,7 +33,7 @@ function createWindow() {
   }
 
   // Load the app
-  const isDev = !app.isPackaged
+  const isDev = !app.isPackaged && process.env.ELECTRON_BUILD !== 'true'
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')
   } else {
