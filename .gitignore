@@ -3,7 +3,11 @@
 .github/
 .idea/
 .superpowers/
-Backend/
+# Backend/
+!Backend/studyflow-api/
+Backend/functions/
+Backend/notes-api/
+Backend/notes-worker/
 Extension/
 GItHub/
 StudyFlowDownload/
