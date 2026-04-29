@@ -19,11 +19,11 @@ async function initDB() {
         // Create Classes table
         await conn.query(`
             CREATE TABLE IF NOT EXISTS classes (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id VARCHAR(128) PRIMARY KEY,
                 user_id VARCHAR(128) NOT NULL,
                 name VARCHAR(255) NOT NULL,
                 color VARCHAR(50),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,      
                 FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE
             )
         `);
@@ -32,20 +32,19 @@ async function initDB() {
         // Create Tasks table
         await conn.query(`
             CREATE TABLE IF NOT EXISTS tasks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
+                id VARCHAR(128) PRIMARY KEY,
                 user_id VARCHAR(128) NOT NULL,
                 title VARCHAR(255) NOT NULL,
                 text TEXT,
-                class_id INT,
+                class_id VARCHAR(128),
                 status VARCHAR(50) DEFAULT 'pending',
                 due_date DATETIME,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,      
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(uid) ON DELETE CASCADE,
                 FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL
             )
-        `);
-        console.log('Tasks table ready');
+        `);        console.log('Tasks table ready');
 
         console.log('Database initialization completed successfully');
     } catch (err) {
