@@ -1,9 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { startBackendApi } = require('./processManager');
+const { startBackendApi, startCloudflared } = require('./processManager');
 
 let mainWindow;
 let apiProcess;
+let tunnelProcess;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -20,6 +21,20 @@ function createWindow() {
         const apiDir = path.join(__dirname, '..', 'Backend', 'studyflow-api');
         apiProcess = startBackendApi(
             apiDir,
+            (log) => {
+                console.log(log);
+                if (mainWindow) mainWindow.webContents.send('status-update', log);
+            },
+            (err) => {
+                console.error(err);
+                if (mainWindow) mainWindow.webContents.send('status-update', err);
+            }
+        );
+    }
+
+    // Start Cloudflared tunnel simulation
+    if (!tunnelProcess) {
+        tunnelProcess = startCloudflared(
             (log) => {
                 console.log(log);
                 if (mainWindow) mainWindow.webContents.send('status-update', log);
@@ -48,4 +63,5 @@ app.on('window-all-closed', function () {
 
 app.on('will-quit', () => {
     if (apiProcess) apiProcess.kill();
+    if (tunnelProcess) tunnelProcess.kill();
 });

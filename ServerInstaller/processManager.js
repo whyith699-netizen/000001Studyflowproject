@@ -25,4 +25,17 @@ function startBackendApi(apiDir, onLog, onError) {
     return apiProcess;
 }
 
-module.exports = { startBackendApi };
+function startCloudflared(onLog, onError) {
+    // Simulasi Cloudflare tunnel
+    onLog("[TUNNEL] Starting cloudflared tunnel...");
+    
+    setTimeout(() => {
+        const fakeUrl = `https://api-${Math.floor(Math.random()*10000)}-studyflow.trycloudflare.com`;
+        onLog(`[TUNNEL] Tunnel is active!`);
+        onLog(`[TUNNEL] URL: ${fakeUrl}`);
+    }, 2000);
+
+    return { kill: () => onLog("[TUNNEL] Tunnel stopped.") };
+}
+
+module.exports = { startBackendApi, startCloudflared };
