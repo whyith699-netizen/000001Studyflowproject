@@ -59,7 +59,7 @@ const StudyGoals = ({ className }) => {
 
   if (loading) {
     return (
-      <div className={`rounded-2xl p-3 border shadow-sm h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'} ${className || ''}`}>
+      <div className={`rounded-2xl p-3 border shadow-sm flex-1 flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'} ${className || ''}`}>
         <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
           <i className="fas fa-tasks text-blue-500"></i>
           <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('myTasks')}</h2>
@@ -72,7 +72,7 @@ const StudyGoals = ({ className }) => {
   }
 
   return (
-    <div className={`rounded-2xl p-3 border shadow-sm h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'} ${className || ''}`}>
+    <div className={`rounded-2xl p-3 border shadow-sm flex-1 flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'} ${className || ''}`}>
       {/* Header - No Add Button */}
       <div className={`flex items-center justify-between mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">

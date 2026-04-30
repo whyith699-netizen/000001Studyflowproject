@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { studySessionsService } from '../services/firestore-service';
+import { localSessionsService } from '../services/local-db-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useTimer } from '../contexts/TimerContext';
 
@@ -10,11 +10,18 @@ const WeeklyProgress = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = studySessionsService.subscribeToSessions((fetchedSessions) => {
+    const loadLocalData = async () => {
+      const fetchedSessions = await localSessionsService.getSessions();
       setSessions(fetchedSessions);
       setLoading(false);
-    });
-    return () => unsubscribe();
+    };
+
+    loadLocalData();
+
+    // Poll for changes every 3 seconds for near-realtime UI updates
+    // This is very cheap as it's a local IndexedDB read.
+    const interval = setInterval(loadLocalData, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Calculate daily data from sessions
@@ -67,7 +74,7 @@ const WeeklyProgress = () => {
 
   if (loading) {
     return (
-      <div className={`rounded-xl p-3 border shadow-sm flex-1 ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+      <div className={`rounded-2xl p-3 border shadow-sm flex-1 ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
         <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
           <i className="fas fa-chart-line text-blue-600"></i>
           <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Weekly Progress</h2>
@@ -80,7 +87,7 @@ const WeeklyProgress = () => {
   }
 
   return (
-    <div className={`rounded-xl p-3 border shadow-sm flex-1 h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+    <div className={`rounded-2xl p-3 border shadow-sm flex-1 h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
       <div className={`flex items-center justify-between mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">
           <i className="fas fa-chart-line text-blue-600"></i>
