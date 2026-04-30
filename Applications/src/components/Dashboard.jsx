@@ -58,7 +58,8 @@ const Dashboard = () => {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [classes, setClasses] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [streak, setStreak] = useState(0);
+  const [profile, setProfile] = useState(null);
+  const streak = profile?.streak || 0;
   const [isAdding, setIsAdding] = useState(false);
   const [uniforms, setUniforms] = useState({});
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -91,25 +92,24 @@ const Dashboard = () => {
       setUniforms(data);
     });
 
-    const loadStreak = async () => {
-      try {
-        const profile = await userService.getProfile();
-        setStreak(profile?.streak || 0);
+    const unsubProfile = userService.subscribeToProfile((data) => {
+      setProfile(data);
+      if (data) {
         const today = toDateKey();
-        const lastClaimDate = profile?.lastStreakClaimDate || null;
+        const lastClaimDate = data.lastStreakClaimDate || null;
         if (lastClaimDate !== today) {
           setShowStreakClaimModal(true);
+        } else {
+          setShowStreakClaimModal(false);
         }
-      } catch (error) {
-        console.error("Error loading streak:", error);
       }
-    };
-    loadStreak();
+    });
 
     return () => {
       unsubClasses();
       unsubTasks();
       unsubUniforms();
+      unsubProfile();
     };
   }, []);
 
@@ -151,8 +151,12 @@ const Dashboard = () => {
     setIsClaimingStreak(true);
     try {
       const result = await userService.claimLoginStreak();
-      if (typeof result?.streak === "number") {
-        setStreak(result.streak);
+      if (result && typeof result.streak === "number") {
+        setProfile((prev) => ({
+          ...prev,
+          streak: result.streak,
+          lastStreakClaimDate: toDateKey(),
+        }));
       }
       setShowStreakClaimModal(false);
     } catch (error) {
@@ -181,21 +185,21 @@ const Dashboard = () => {
 
   return (
     <div
-      className={`flex h-screen w-full overflow-hidden ${isDarkMode ? "sf-dark-shell" : "bg-gradient-to-br from-slate-50 to-white"}`}
+      className={`flex lg:h-screen w-full lg:overflow-hidden ${isDarkMode ? "sf-dark-shell" : "bg-gradient-to-br from-slate-50 to-white"}`}
     >
       <Sidebar user={user} />
 
       <main
-        className="flex-1 flex flex-col h-full overflow-y-auto md:pb-0"
+        className="flex-1 flex flex-col lg:h-screen lg:overflow-hidden"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 12px)",
-          paddingBottom: "max(0px, env(safe-area-inset-bottom))",
+          paddingBottom: "max(12px, env(safe-area-inset-bottom))",
         }}
       >
-        <div className="flex-1 w-full px-4 py-3 pb-[20rem] md:px-6 md:py-4 md:pb-0 flex flex-col gap-3 md:h-full">
+        <div className="flex-1 w-full px-4 py-3 flex flex-col gap-3 h-full overflow-hidden">
           {/* Header */}
           <div
-            className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
+            className={`rounded-2xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
           >
             <div className="flex flex-wrap justify-between items-center gap-3">
               <div className="flex flex-col gap-0.5">
@@ -230,13 +234,13 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* 3-Column Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:flex-1 md:min-h-0">
-            {/* LEFT COLUMN â€” Info Widgets */}
-            <div className="lg:col-span-3 flex flex-col gap-3">
+          {/* Bento Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0 overflow-hidden">
+            {/* LEFT COLUMN — Info Widgets */}
+            <div className="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
               {/* Live Clock & Date */}
               <div
-                className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
+                className={`rounded-2xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
               >
                 <div
                   className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? "border-slate-700" : "border-gray-100"}`}
@@ -264,7 +268,7 @@ const Dashboard = () => {
 
               {/* Today's Uniform */}
               <div
-                className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
+                className={`rounded-2xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
               >
                 <div
                   className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? "border-slate-700" : "border-gray-100"}`}
@@ -308,7 +312,7 @@ const Dashboard = () => {
 
               {/* Today's Schedule */}
               <div
-                className={`rounded-xl p-3 border shadow-sm flex-1 ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
+                className={`rounded-2xl p-3 border shadow-sm flex-1 min-h-0 flex flex-col ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
               >
                 <div
                   className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? "border-slate-700" : "border-gray-100"}`}
@@ -326,31 +330,33 @@ const Dashboard = () => {
                   </span>
                 </div>
                 {todayClasses.length > 0 ? (
-                  <div className="flex flex-col gap-1.5">
-                    {todayClasses.map((cls) => (
-                      <button
-                        type="button"
-                        key={cls.id}
-                        onClick={() => handleOpenClassDetail(cls)}
-                        className={`w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left ${isDarkMode ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-50 hover:bg-gray-100"}`}
-                      >
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${isDarkMode ? "bg-blue-900/30" : "bg-blue-50"}`}
+                  <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+                    <div className="flex flex-col gap-1.5">
+                      {todayClasses.map((cls) => (
+                        <button
+                          type="button"
+                          key={cls.id}
+                          onClick={() => handleOpenClassDetail(cls)}
+                          className={`w-full flex items-center gap-2 p-2 rounded-lg transition-colors text-left ${isDarkMode ? "bg-slate-800 hover:bg-slate-700" : "bg-gray-50 hover:bg-gray-100"}`}
                         >
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${isDarkMode ? "bg-blue-900/30" : "bg-blue-50"}`}
+                          >
+                            <i
+                              className={`fas ${getClassIcon(cls)} text-blue-600`}
+                            ></i>
+                          </div>
+                          <p
+                            className={`font-medium text-sm truncate ${isDarkMode ? "text-white" : "text-gray-800"}`}
+                          >
+                            {cls.name}
+                          </p>
                           <i
-                            className={`fas ${getClassIcon(cls)} text-blue-600`}
+                            className={`fas fa-chevron-right ml-auto text-xs ${isDarkMode ? "text-slate-500" : "text-gray-400"}`}
                           ></i>
-                        </div>
-                        <p
-                          className={`font-medium text-sm truncate ${isDarkMode ? "text-white" : "text-gray-800"}`}
-                        >
-                          {cls.name}
-                        </p>
-                        <i
-                          className={`fas fa-chevron-right ml-auto text-xs ${isDarkMode ? "text-slate-500" : "text-gray-400"}`}
-                        ></i>
-                      </button>
-                    ))}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div
@@ -364,20 +370,20 @@ const Dashboard = () => {
             </div>
 
             {/* CENTER COLUMN — Timer & Progress */}
-            <div className="lg:col-span-6 flex flex-col gap-3">
+            <div className="lg:col-span-6 flex flex-col gap-3 h-full min-h-0">
               <Timer mode="compact" onPopup={openMiniTimerPopup} />
               <div className="flex-1 min-h-0">
                 <WeeklyProgress />
               </div>
             </div>
 
-            {/* RIGHT COLUMN â€” Tasks & Quote */}
-            <div className="lg:col-span-3 flex flex-col gap-3">
+            {/* RIGHT COLUMN — Tasks & Quote */}
+            <div className="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
               <StudyGoals />
 
               {/* Quote of the Day */}
               <div
-                className={`rounded-xl p-5 shadow-sm relative flex-shrink-0 border ${
+                className={`rounded-2xl p-5 shadow-sm relative flex-shrink-0 border ${
                   isDarkMode
                     ? "sf-dark-card sf-dark-border sf-dark-text"
                     : "bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white border-white/[0.06]"
