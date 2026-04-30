@@ -15,5 +15,16 @@
         <p>Aplikasi ini mengelola database, API, dan koneksi jaringan sekolah Anda.</p>
         <div id="status">Status: Menunggu inisialisasi...</div>
     </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        window.api.onStatusUpdate((msg) => {
+            const p = document.createElement('p');
+            p.textContent = msg;
+            p.style.fontSize = '12px';
+            p.style.color = '#4a5568';
+            statusDiv.appendChild(p);
+        });
+    </script>
 </body>
 </html>

@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { startBackendApi } = require('./processManager');
 
 let mainWindow;
+let apiProcess;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -12,6 +14,18 @@ function createWindow() {
         },
         title: 'StudyFlow Server'
     });
+
+    // Start Backend API
+    apiProcess = startBackendApi(
+        (log) => {
+            console.log(log);
+            if (mainWindow) mainWindow.webContents.send('status-update', log);
+        },
+        (err) => {
+            console.error(err);
+            if (mainWindow) mainWindow.webContents.send('status-update', err);
+        }
+    );
 
     mainWindow.loadFile('index.html');
 }
@@ -26,4 +40,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+    if (apiProcess) apiProcess.kill();
 });
