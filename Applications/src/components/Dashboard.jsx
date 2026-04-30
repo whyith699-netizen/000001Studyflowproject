@@ -13,6 +13,7 @@ import Sidebar from "./Sidebar";
 import Timer from "./Timer";
 import WeeklyProgress from "./WeeklyProgress";
 import StudyGoals from "./StudyGoals";
+import DashboardRoadmap from "./DashboardRoadmap";
 import TaskForm from "./forms/TaskForm";
 import ClassDetailModal from "./ClassDetailModal";
 import { getQuoteOfTheDay } from "../utils/quotes";
@@ -410,7 +411,9 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              <StudyGoals />
+              <DashboardRoadmap />
+
+              <StudyGoals className="max-h-[300px]" />
             </div>
           </div>
         </div>
