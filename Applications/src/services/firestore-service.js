@@ -23,6 +23,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { normalizeTaskReminder } from "../config/taskReminderOptions";
+import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
 // --- HELPERS ---
 
@@ -388,7 +389,21 @@ export const userService = {
     if (!user) return;
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
-    const data = snap.exists() ? snap.data() : null;
+    let data = snap.exists() ? snap.data() : null;
+    
+    // Streak reset logic: if more than 1 day has passed since last claim, streak is broken
+    if (data && data.lastStreakClaimDate) {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const diff = differenceInCalendarDays(parseISO(today), parseISO(data.lastStreakClaimDate));
+      if (diff > 1) {
+        data.streak = 0;
+        // Persist the reset to Firestore to ensure consistency across devices/remounts
+        await updateDoc(ref, { streak: 0, updatedAt: serverTimestamp() }).catch(err => 
+          console.error("Failed to persist streak reset:", err)
+        );
+      }
+    }
+    
     profileState.notify(data);
     profileState.markFetched();
     return data;
@@ -419,12 +434,25 @@ export const userService = {
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
     const userData = snap.exists() ? snap.data() : {};
+    const currentStreak = Number(userData.streak || 0);
 
-    const today = new Date().toISOString().split('T')[0];
-    if (userData.lastStreakClaimDate === today) return { alreadyClaimed: true, streak: userData.streak };
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (userData.lastStreakClaimDate === today) return { alreadyClaimed: true, streak: currentStreak };
 
-    const nextStreak = (userData.streak || 0) + 1;
-    const updates = { streak: nextStreak, lastLoginStreakDate: today, lastStreakClaimDate: today, updatedAt: serverTimestamp() };
+    let nextStreak = 1;
+    if (userData.lastStreakClaimDate) {
+      const diff = differenceInCalendarDays(parseISO(today), parseISO(userData.lastStreakClaimDate));
+      if (diff === 1) {
+        nextStreak = currentStreak + 1;
+      }
+    }
+
+    const updates = { 
+      streak: nextStreak, 
+      lastLoginStreakDate: today, 
+      lastStreakClaimDate: today, 
+      updatedAt: serverTimestamp() 
+    };
     await setDoc(ref, updates, { merge: true });
     
     profileState.notify({ ...profileState.data, ...updates });
@@ -462,6 +490,7 @@ export const studySessionsService = {
     const newSession = {
       id, type: sessionData.type || "pomodoro", duration: sessionData.duration || 25,
       taskId: sessionData.taskId || null, taskName: sessionData.taskName || null,
+      classId: sessionData.classId || null, className: sessionData.className || null,
       completedAt: Date.now(), createdAt: Date.now()
     };
     await setDoc(ref, newSession);

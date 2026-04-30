@@ -12,6 +12,8 @@ import {
   studySessionsService,
   userService,
 } from "../services/firestore-service";
+import { localSessionsService } from "../services/local-db-service";
+import { syncSessionsWithCloud, pullHistoryFromCloud } from "../services/sync-service";
 import {
   notifyTimerComplete,
   playTimerTransitionCue,
@@ -232,6 +234,10 @@ export const TimerProvider = ({ children }) => {
         return;
       }
 
+      // Sync local-first data
+      pullHistoryFromCloud();
+      syncSessionsWithCloud();
+
       unsubscribeProfile = userService.subscribeToProfile((profile) => {
         applyProfileSettings(profile);
       });
@@ -256,15 +262,23 @@ export const TimerProvider = ({ children }) => {
   const savePomodoroSession = useCallback(
     async (durationMinutes) => {
       if (durationMinutes > 0) {
+        const sessionData = {
+          type: "pomodoro",
+          duration: durationMinutes,
+          taskId: selectedTask?.id || null,
+          taskName: selectedTask?.title || selectedTask?.text || null,
+          classId: selectedTask?.classId || null,
+          className: selectedTask?.className || null,
+        };
+
         try {
-          await studySessionsService.addSession({
-            type: "pomodoro",
-            duration: durationMinutes,
-            taskId: selectedTask?.id || null,
-            taskName: selectedTask?.title || selectedTask?.text || null,
-          });
+          // 1. Save to Local IDB Instantly
+          await localSessionsService.addSession(sessionData);
+          
+          // 2. Trigger Background Sync
+          syncSessionsWithCloud();
         } catch (error) {
-          console.error("Failed to save pomodoro session:", error);
+          console.error("Failed to save pomodoro session locally:", error);
         }
       }
     },
