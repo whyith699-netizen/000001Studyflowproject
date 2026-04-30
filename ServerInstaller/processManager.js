@@ -1,11 +1,14 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-function startBackendApi(onLog, onError) {
-    // Asumsi Backend/studyflow-api sejajar dengan folder ServerInstaller
-    const apiPath = path.join(__dirname, '..', 'Backend', 'studyflow-api', 'src', 'index.js');
+function startBackendApi(apiDir, onLog, onError) {
+    const apiPath = path.join(apiDir, 'src', 'index.js');
     
-    const apiProcess = spawn('node', [apiPath]);
+    const apiProcess = spawn('node', [apiPath], { cwd: apiDir });
+
+    apiProcess.on('error', (err) => {
+        onError(`[API SPAWN ERROR] ${err.message}`);
+    });
 
     apiProcess.stdout.on('data', (data) => {
         onLog(`[API] ${data.toString()}`);

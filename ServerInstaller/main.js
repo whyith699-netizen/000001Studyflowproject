@@ -15,17 +15,21 @@ function createWindow() {
         title: 'StudyFlow Server'
     });
 
-    // Start Backend API
-    apiProcess = startBackendApi(
-        (log) => {
-            console.log(log);
-            if (mainWindow) mainWindow.webContents.send('status-update', log);
-        },
-        (err) => {
-            console.error(err);
-            if (mainWindow) mainWindow.webContents.send('status-update', err);
-        }
-    );
+    // Start Backend API if not already running
+    if (!apiProcess) {
+        const apiDir = path.join(__dirname, '..', 'Backend', 'studyflow-api');
+        apiProcess = startBackendApi(
+            apiDir,
+            (log) => {
+                console.log(log);
+                if (mainWindow) mainWindow.webContents.send('status-update', log);
+            },
+            (err) => {
+                console.error(err);
+                if (mainWindow) mainWindow.webContents.send('status-update', err);
+            }
+        );
+    }
 
     mainWindow.loadFile('index.html');
 }

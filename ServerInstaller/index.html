@@ -23,7 +23,16 @@
             p.textContent = msg;
             p.style.fontSize = '12px';
             p.style.color = '#4a5568';
+            p.style.margin = '4px 0';
             statusDiv.appendChild(p);
+
+            // Limit logs to 50 to prevent DOM flooding
+            while (statusDiv.childElementCount > 51) { // 50 logs + 1 title text/wait message
+                statusDiv.removeChild(statusDiv.childNodes[1]); // Remove first log (after the "Status:" text)
+            }
+
+            // Auto-scroll
+            window.scrollTo(0, document.body.scrollHeight);
         });
     </script>
 </body>
