@@ -37,7 +37,7 @@ const WeeklyProgress = () => {
 
     // Aggregate session minutes per day
     sessions.forEach(session => {
-      const sessionDate = new Date(session.completedAt || session.createdAt);
+      const sessionDate = new Date(session.timestamp || session.completedAt || session.createdAt);
       if (sessionDate >= startOfWeek) {
         const dayIndex = sessionDate.getDay();
         data[dayIndex] += session.duration || 0;
