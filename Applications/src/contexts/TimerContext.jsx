@@ -11,6 +11,7 @@ import { auth } from "../firebase-config";
 import {
   studySessionsService,
   userService,
+  achievementService,
 } from "../services/firestore-service";
 import { localSessionsService } from "../services/local-db-service";
 import { syncSessionsWithCloud, pullHistoryFromCloud } from "../services/sync-service";
@@ -277,6 +278,11 @@ export const TimerProvider = ({ children }) => {
           
           // 2. Trigger Background Sync
           syncSessionsWithCloud();
+
+          // 3. Achievement Check: First Focus
+          if (durationMinutes >= 25) {
+            achievementService.unlockBadge('first_focus', 'First Focus Session');
+          }
         } catch (error) {
           console.error("Failed to save pomodoro session locally:", error);
         }

@@ -41,6 +41,7 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
     () => {
       const items = [
         { path: '/dashboard', icon: 'fa-th-large', label: t('dashboard') },
+        { path: '/profile', icon: 'fa-user-circle', label: t('profile') },
         { path: '/schedule', icon: 'fa-stream', label: t('schedule') },
         { path: '/focus', icon: 'fa-clock', label: t('focusMode') },
         { path: '/tasks', icon: 'fa-clipboard-list', label: t('myTasks') },

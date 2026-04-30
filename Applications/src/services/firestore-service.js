@@ -622,6 +622,95 @@ export const calendarEventsService = {
 };
 
 /**
+ * Achievement Service
+ */
+export const achievementService = {
+  async fetchBadges() {
+    const snap = await getDocs(collection(db, "badges"));
+    const badges = [];
+    snap.forEach(doc => badges.push({ id: doc.id, ...doc.data() }));
+    return badges;
+  },
+  async getMyAchievements() {
+    const user = auth.currentUser;
+    if (!user) return [];
+    const ref = collection(db, "users", user.uid, "achievements");
+    const snap = await getDocs(ref);
+    const achievements = [];
+    snap.forEach(doc => achievements.push({ id: doc.id, ...doc.data() }));
+    return achievements;
+  },
+  async unlockBadge(badgeId, badgeName) {
+    const user = auth.currentUser;
+    if (!user) return;
+    const ref = doc(db, "users", user.uid, "achievements", badgeId);
+    await setDoc(ref, { badgeName, unlockedAt: Date.now() });
+  }
+};
+
+/**
+ * Friend Service
+ */
+export const friendService = {
+  async addFriendByEmail(email) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Unauthorized");
+    const q = query(collection(db, "users"), where("email", "==", email.trim().toLowerCase()));
+    const snap = await getDocs(q);
+    if (snap.empty) throw new Error("User not found");
+    const friendData = snap.docs[0].data();
+    const friendUid = snap.docs[0].id;
+    
+    const friendRef = doc(db, "users", user.uid, "friends", friendUid);
+    await setDoc(friendRef, {
+      displayName: friendData.displayName || "Unknown",
+      email: friendData.email,
+      photoURL: friendData.photoURL || null,
+      streak: friendData.streak || 0,
+      addedAt: Date.now()
+    });
+    return friendData;
+  },
+  async getFriends() {
+    const user = auth.currentUser;
+    if (!user) return [];
+    const snap = await getDocs(collection(db, "users", user.uid, "friends"));
+    const friends = [];
+    snap.forEach(doc => friends.push({ id: doc.id, ...doc.data() }));
+    return friends;
+  }
+};
+
+/**
+ * Inbox Service
+ */
+export const inboxService = {
+  async sendMessage(friendUid, content) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Unauthorized");
+    const msgId = `msg_${Date.now()}`;
+    const ref = doc(db, "users", friendUid, "inbox", msgId);
+    await setDoc(ref, {
+      fromUid: user.uid,
+      fromName: user.displayName || "Someone",
+      content,
+      timestamp: Date.now(),
+      isRead: false
+    });
+  },
+  subscribeToInbox(callback) {
+    const user = auth.currentUser;
+    if (!user) return () => {};
+    const q = query(collection(db, "users", user.uid, "inbox"), orderBy("timestamp", "desc"));
+    return onSnapshot(q, (snap) => {
+      const msgs = [];
+      snap.forEach(doc => msgs.push({ id: doc.id, ...doc.data() }));
+      callback(msgs);
+    });
+  }
+};
+
+/**
  * Delete all user data from Firestore (for account deletion)
  */
 export async function deleteUserData() {
@@ -634,6 +723,9 @@ export async function deleteUserData() {
     "studySessions",
     "exams",
     "calendarEvents",
+    "achievements",
+    "friends",
+    "inbox",
   ];
 
   for (const sub of subcollections) {
@@ -669,6 +761,9 @@ export default {
   classes: classesService,
   user: userService,
   studySessions: studySessionsService,
+  achievements: achievementService,
+  friends: friendService,
+  inbox: inboxService,
   uniforms: uniformsService,
   studyTools: studyToolsService,
   calendarEvents: calendarEventsService,

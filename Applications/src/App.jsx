@@ -17,6 +17,7 @@ import SettingsPage from "./components/SettingsPage";
 import CalendarPage from "./components/CalendarPage";
 import NotesPage from "./components/NotesPage";
 import ToolsPage from "./components/ToolsPage";
+import ProfilePage from "./components/ProfilePage";
 import PrivateRoute from "./components/PrivateRoute";
 import MobileReminderSync from "./components/MobileReminderSync";
 import ChatbotWidget from "./components/chatbot/ChatbotWidget";
@@ -141,6 +142,14 @@ function App() {
                     element={
                       <PrivateRoute>
                         <ToolsPage />
+                      </PrivateRoute>
+                    }
+                  />
+                  <Route
+                    path="/profile"
+                    element={
+                      <PrivateRoute>
+                        <ProfilePage />
                       </PrivateRoute>
                     }
                   />
