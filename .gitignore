@@ -15,3 +15,5 @@ docs/
 output/
 node_modules/
 .DS_Store
+
+.worktrees/
