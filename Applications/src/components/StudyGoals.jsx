@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
-import { tasksService, classesService } from '../services/firestore-service';
+﻿import React, { useState, useEffect, useMemo } from 'react';
+import { tasksService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useLang } from '../contexts/LanguageContext';
 
@@ -11,16 +11,15 @@ const TASK_TYPES = {
   other: { label: 'Other', icon: 'fa-sticky-note', color: 'text-gray-500', bg: 'bg-gray-50', darkBg: 'bg-gray-800' }
 };
 
-const StudyGoals = () => {
+const StudyGoals = ({ className }) => {
   const { isDarkMode } = useDarkMode();
   const { t } = useLang();
   const [tasks, setTasks] = useState([]);
-  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubTasks = tasksService.subscribeToTasks((fetchedTasks) => {
-      const sorted = fetchedTasks.sort((a, b) => {
+      const sorted = [...fetchedTasks].sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
@@ -28,21 +27,19 @@ const StudyGoals = () => {
       setLoading(false);
     });
 
-    const unsubClasses = classesService.subscribeToClasses((fetchedClasses) => {
-      setClasses(fetchedClasses);
-    });
-
     return () => {
       unsubTasks();
-      unsubClasses();
     };
   }, []);
 
-  const taskCounts = {
-    exam: tasks.filter(t => t.type === 'exam' && !t.completed).length,
-    individual: tasks.filter(t => t.type === 'individual' && !t.completed).length,
-    group: tasks.filter(t => t.type === 'group' && !t.completed).length
-  };
+  const taskCounts = useMemo(() => {
+    return tasks.reduce((acc, task) => {
+      if (!task.completed && Object.prototype.hasOwnProperty.call(acc, task.type)) {
+        acc[task.type]++;
+      }
+      return acc;
+    }, { exam: 0, individual: 0, group: 0 });
+  }, [tasks]);
 
   const handleToggle = async (taskId, currentStatus) => {
     try {
@@ -62,7 +59,7 @@ const StudyGoals = () => {
 
   if (loading) {
     return (
-      <div className={`rounded-xl p-3 border shadow-sm h-full ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+      <div className={`rounded-2xl p-3 border shadow-sm h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'} ${className || ''}`}>
         <div className={`flex items-center gap-2 mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
           <i className="fas fa-tasks text-blue-500"></i>
           <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('myTasks')}</h2>
@@ -75,7 +72,7 @@ const StudyGoals = () => {
   }
 
   return (
-    <div className={`rounded-xl p-3 border shadow-sm h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+    <div className={`rounded-2xl p-3 border shadow-sm h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'} ${className || ''}`}>
       {/* Header - No Add Button */}
       <div className={`flex items-center justify-between mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">
@@ -101,14 +98,14 @@ const StudyGoals = () => {
       </div>
       
       {/* Task List */}
-      <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
+      <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto min-h-0 pr-1">
         {tasks.length === 0 ? (
           <div className={`text-center py-8 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
             <i className="fas fa-clipboard-list text-3xl mb-2 opacity-40"></i>
             <p className="text-xs">{t('noTasksYet')}</p>
           </div>
         ) : (
-          tasks.slice(0, 10).map((task) => {
+          tasks.map((task) => {
             const typeConfig = TASK_TYPES[task.type] || TASK_TYPES.other;
             const priorityClass = task.priority === 'high' ? 'border-l-red-500' : 
                                   task.priority === 'medium' ? 'border-l-amber-500' : 'border-l-green-500';
@@ -171,12 +168,6 @@ const StudyGoals = () => {
           })
         )}
       </div>
-      
-      {tasks.length > 10 && (
-        <button className={`w-full mt-3 py-2 text-xs font-semibold rounded-lg transition-colors ${isDarkMode ? 'text-blue-400 hover:bg-slate-700' : 'text-blue-600 hover:bg-blue-50'}`}>
-          View All {tasks.length} Tasks
-        </button>
-      )}
     </div>
   );
 };
