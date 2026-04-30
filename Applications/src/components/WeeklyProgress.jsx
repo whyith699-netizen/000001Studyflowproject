@@ -87,7 +87,7 @@ const WeeklyProgress = () => {
   }
 
   return (
-    <div className={`rounded-2xl p-3 border shadow-sm flex-1 h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+    <div className={`rounded-2xl p-3 border shadow-sm flex-1 lg:h-full flex flex-col ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
       <div className={`flex items-center justify-between mb-2 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2">
           <i className="fas fa-chart-line text-blue-600"></i>

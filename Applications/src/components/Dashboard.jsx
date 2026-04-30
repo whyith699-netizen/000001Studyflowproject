@@ -196,48 +196,11 @@ const Dashboard = () => {
           paddingBottom: "max(12px, env(safe-area-inset-bottom))",
         }}
       >
-        <div className="flex-1 w-full px-4 py-3 flex flex-col gap-3 h-full overflow-hidden">
-          {/* Header */}
-          <div
-            className={`rounded-2xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
-          >
-            <div className="flex flex-wrap justify-between items-center gap-3">
-              <div className="flex flex-col gap-0.5">
-                <h1
-                  className={`text-xl md:text-2xl font-bold leading-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                >
-                  {t("welcomeBack")},{" "}
-                  {user?.displayName?.split(" ")[0] || "Student"}
-                </h1>
-                <div className="flex items-center gap-2">
-                  <i
-                    className={`fas fa-bolt ${isDarkMode ? "sf-accent-text" : "text-blue-500"}`}
-                  ></i>
-                  <p
-                    className={`text-sm ${isDarkMode ? "sf-accent-text" : "text-gray-500"}`}
-                  >
-                    {t("streakMessage", { n: streak })}! {t("keepItUp")}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddTaskModal(true)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm flex items-center gap-2 ${
-                  isDarkMode
-                    ? "sf-accent-btn"
-                    : "bg-[#3b82f6] hover:bg-[#2563eb] text-white"
-                }`}
-              >
-                <i className="fas fa-plus"></i>
-                {t("newTask")}
-              </button>
-            </div>
-          </div>
-
+        <div className="flex-1 w-full px-4 py-3 flex flex-col gap-3 lg:h-full lg:overflow-hidden">
           {/* Bento Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0 lg:overflow-hidden">
             {/* LEFT COLUMN — Info Widgets */}
-            <div className="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
+            <div className="lg:col-span-3 flex flex-col gap-3 lg:h-full min-h-0">
               {/* Live Clock & Date */}
               <div
                 className={`rounded-2xl p-3 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
@@ -369,25 +332,61 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* CENTER COLUMN — Timer & Progress */}
-            <div className="lg:col-span-6 flex flex-col gap-3 h-full min-h-0">
+            {/* CENTER COLUMN — Header, Timer & Progress */}
+            <div className="lg:col-span-6 flex flex-col gap-3 lg:h-full min-h-0">
+              {/* Welcome Header */}
+              <div
+                className={`rounded-2xl p-4 border shadow-sm ${isDarkMode ? "sf-dark-card sf-dark-border" : "bg-white border-gray-100"}`}
+              >
+                <div className="flex flex-wrap justify-between items-center gap-3">
+                  <div className="flex flex-col gap-0.5">
+                    <h1
+                      className={`text-xl md:text-2xl font-bold leading-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                    >
+                      {t("welcomeBack")},{" "}
+                      {user?.displayName?.split(" ")[0] || "Student"}
+                    </h1>
+                    <div className="flex items-center gap-2">
+                      <i
+                        className={`fas fa-bolt ${isDarkMode ? "sf-accent-text" : "text-blue-500"}`}
+                      ></i>
+                      <p
+                        className={`text-sm ${isDarkMode ? "sf-accent-text" : "text-gray-500"}`}
+                      >
+                        {t("streakMessage", { n: streak })}! {t("keepItUp")}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowAddTaskModal(true)}
+                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm flex items-center gap-2 ${
+                      isDarkMode
+                        ? "sf-accent-btn"
+                        : "bg-[#3b82f6] hover:bg-[#2563eb] text-white"
+                    }`}
+                  >
+                    <i className="fas fa-plus"></i>
+                    {t("newTask")}
+                  </button>
+                </div>
+              </div>
+
               <Timer mode="compact" onPopup={openMiniTimerPopup} />
-              <div className="flex-1 min-h-0">
+
+              <div className="flex-1 min-h-0 flex flex-col lg:overflow-hidden">
                 <WeeklyProgress />
               </div>
             </div>
 
             {/* RIGHT COLUMN — Tasks & Quote */}
-            <div className="lg:col-span-3 flex flex-col gap-3 h-full min-h-0">
-              <StudyGoals />
-
+            <div className="lg:col-span-3 flex flex-col gap-3 lg:h-full min-h-0">
               {/* Quote of the Day */}
               <div
                 className={`rounded-2xl p-5 shadow-sm relative flex-shrink-0 border ${
                   isDarkMode
                     ? "sf-dark-card sf-dark-border sf-dark-text"
                     : "bg-gradient-to-br from-[#1e293b] to-[#0f172a] text-white border-white/[0.06]"
-                } mb-3 md:mb-0`}
+                }`}
               >
                 <div className="absolute top-0 right-0 p-3 opacity-10">
                   <i className="fas fa-quote-right text-6xl"></i>
@@ -410,6 +409,8 @@ const Dashboard = () => {
                   &mdash; {dailyQuote.author}
                 </p>
               </div>
+
+              <StudyGoals />
             </div>
           </div>
         </div>
