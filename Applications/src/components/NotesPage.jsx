@@ -6,6 +6,8 @@ import { useConfirm } from "../contexts/ConfirmDialogContext";
 import { useSidebarCollapse } from "../contexts/SidebarCollapseContext";
 import Sidebar from "./Sidebar";
 import { driveService } from "../services/drive-service";
+import QuizModal from './analytics/QuizModal';
+import { quizService } from '../services/quiz-service';
 
 const DRIVE_FOLDER_MIME = "application/vnd.google-apps.folder";
 const GOOGLE_DOC_MIME = "application/vnd.google-apps.document";
@@ -221,6 +223,10 @@ const NotesPage = () => {
   const [editorLoading, setEditorLoading] = useState(false);
   const [editorSaving, setEditorSaving] = useState(false);
   const [editorDirty, setEditorDirty] = useState(false);
+
+  const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
+  const [quizData, setQuizData] = useState([]);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
 
   const [previewFile, setPreviewFile] = useState(null);
   const [isMobile, setIsMobile] = useState(() =>
@@ -848,6 +854,48 @@ const NotesPage = () => {
         e: ls + block.length,
       };
     });
+
+  const generateQuiz = async () => {
+    if (!selectedNote || !selectedText || !editorContent.trim()) {
+      notify("Please select a valid text note with content first.");
+      return;
+    }
+    setIsGeneratingQuiz(true);
+    try {
+      const data = await quizService.generateQuiz(editorContent);
+      setQuizData(data);
+      setIsQuizModalOpen(true);
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setIsGeneratingQuiz(false);
+    }
+  };
+
+  const handleSaveQuizToNote = async (data, originalTitle) => {
+    setDriveLoading(true);
+    setIsQuizModalOpen(false);
+    try {
+      const markdownContent = `# Quiz based on: ${originalTitle}\n\n` + 
+        data.map((item, i) => `### Q${i+1}: ${item.question}\n**Answer:** ${item.answer}\n\n---`).join('\n');
+        
+      const created = await driveService.createNoteFile(`${originalTitle} - Quiz.md`, {
+        type: 'txt',
+        content: markdownContent,
+        parentId: activeFolder?.id || driveStatus?.folderId,
+      });
+      await loadFiles();
+      if (created?.id) {
+        setSelectedNoteId(created.id);
+        setEditorLoadedId(null);
+      }
+      notify("Quiz saved as a new note successfully!");
+    } catch (e) {
+      notify(e?.message || "Failed to save quiz note.");
+    } finally {
+      setDriveLoading(false);
+    }
+  };
 
   const save = async () => {
     if (!selectedNote || !selectedText) return;
@@ -1967,6 +2015,18 @@ const NotesPage = () => {
                 <i className="fas fa-quote-right"></i>
               </button>
 
+              <div className="notes-toolbar-divider"></div>
+              <button
+                onClick={generateQuiz}
+                disabled={isGeneratingQuiz || editorLoading}
+                className={`notes-toolbar-btn font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 ${isDarkMode ? "dark" : ""}`}
+                title="Generate AI Quiz"
+                style={{ width: 'auto', padding: '0 10px', gap: '6px' }}
+              >
+                {isGeneratingQuiz ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-wand-magic-sparkles"></i>}
+                <span className="text-xs">AI Quiz</span>
+              </button>
+
               <div className="ml-auto flex items-center gap-2">
                 {editorDirty && (
                   <span className="text-xs text-amber-500 font-medium">
@@ -2344,6 +2404,14 @@ const NotesPage = () => {
         </div>
       )}
 
+      <QuizModal 
+        isOpen={isQuizModalOpen}
+        onClose={() => setIsQuizModalOpen(false)}
+        quizData={quizData}
+        isDarkMode={isDarkMode}
+        onSaveToNote={handleSaveQuizToNote}
+        noteTitle={selectedNote?.name?.replace(/\.(txt|md|csv|log)$/i, "") || "Untitled"}
+      />
     </div>
   );
 };
