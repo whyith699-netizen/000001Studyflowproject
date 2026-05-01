@@ -45,60 +45,60 @@ const quotes = [
     author: "Tony Robbins",
   },
   {
-    text: "Your limitation—it's only your imagination.",
-    author: "Unknown",
+    text: "It always seems impossible until it’s done.",
+    author: "Nelson Mandela",
   },
   {
     text: "Push yourself, because no one else is going to do it for you.",
-    author: "Unknown",
+    author: "Rhyanna Watson",
   },
   {
-    text: "Great things never came from comfort zones.",
-    author: "Unknown",
+    text: "The expert in anything was once a beginner.",
+    author: "Helen Hayes",
   },
   {
     text: "Dream it. Wish it. Do it.",
-    author: "Unknown",
+    author: "Isabela Reyes-Klein",
   },
   {
     text: "Success doesn't just find you. You have to go out and get it.",
-    author: "Unknown",
+    author: "Lydia Sweatt",
   },
   {
-    text: "The harder you work for something, the greater you'll feel when you achieve it.",
-    author: "Unknown",
+    text: "Genius is 1% inspiration, 99% perspiration.",
+    author: "Thomas Edison",
   },
   {
-    text: "Dream bigger. Do bigger.",
-    author: "Unknown",
+    text: "The more that you learn, the more places you'll go.",
+    author: "Dr. Seuss",
   },
   {
     text: "Don't stop when you're tired. Stop when you're done.",
-    author: "Unknown",
+    author: "David Goggins",
   },
   {
     text: "Wake up with determination. Go to bed with satisfaction.",
-    author: "Unknown",
+    author: "George Horace Lorimer",
   },
   {
     text: "Do something today that your future self will thank you for.",
-    author: "Unknown",
+    author: "Sean Patrick Flanery",
   },
   {
-    text: "Little things make big days.",
-    author: "Unknown",
+    text: "Live as if you were to die tomorrow. Learn as if you were to live forever.",
+    author: "Mahatma Gandhi",
   },
   {
     text: "It's going to be hard, but hard does not mean impossible.",
-    author: "Unknown",
+    author: "Art Williams",
   },
   {
     text: "Don't wait for opportunity. Create it.",
-    author: "Unknown",
+    author: "George Bernard Shaw",
   },
   {
-    text: "Sometimes we're tested not to show our weaknesses, but to discover our strengths.",
-    author: "Unknown",
+    text: "The roots of education are bitter, but the fruit is sweet.",
+    author: "Aristotle",
   },
   {
     text: "The key to success is to start before you are ready.",

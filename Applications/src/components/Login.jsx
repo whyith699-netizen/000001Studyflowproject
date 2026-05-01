@@ -13,6 +13,7 @@ import { userService } from "../services/firestore-service";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "../contexts/LanguageContext";
 import { useDarkMode } from "../contexts/DarkModeContext";
+import studyFlowLogo from "../assets/StudyFlow_logo.jpg";
 
 const Login = () => {
   const { t } = useLang();
@@ -190,7 +191,7 @@ const Login = () => {
             }`}
           >
             <img
-              src="/StudyFlow_logo.jpg"
+              src={studyFlowLogo}
               alt="Logo Study Flow dengan tanda centang panah biru dan topi wisuda"
               width="1280"
               height="698"

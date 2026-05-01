@@ -73,7 +73,7 @@ const translations = {
     taskOptional: "Task (optional)",
     taskPlaceholder: "What are you studying?",
     pomodorosCompleted: "Sessions",
-    totalFocusTime: "Total Focus",
+    totalFocusTime: "Total Focus Time",
     sessionSaved: "Session saved!",
 
     // Reports
@@ -90,6 +90,76 @@ const translations = {
     noStudySessions: "No study sessions yet",
     startFocusSession: "Start a focus session to track your progress",
     breakLabel: "Break",
+
+    // WeeklyProgress enhancements
+    weeklyProgress: "Weekly Progress",
+    totalLabel: "Total",
+    avgDaily: "Avg/day",
+    bestDay: "Best day",
+    totalSessions: "Sessions",
+    vsLastWeek: "vs last week",
+
+    // StudyGoals enhancements
+    completionRate: "Completion",
+    dueTodayBadge: "due today",
+    quickAddPlaceholder: "Add a task...",
+
+    // DashboardRoadmap enhancements
+    noUpcomingItems: "No upcoming items",
+    addTasksOrEvents: "Add tasks or events to get started",
+    task: "task",
+    markComplete: "Mark complete",
+
+    // FocusMode enhancements
+    focusStats: "Focus Stats",
+    weekAvg: "Week avg",
+    longest: "Longest",
+    tasksToFocus: "Tasks to Focus",
+    earlier: "Earlier",
+
+    // ProfilePage enhancements
+    memberSince: "Member since",
+    level: "Level",
+    toNextLevel: "to next level",
+    levelTitle: "Study Level",
+    monthlySummary: "This Month",
+    focusHours: "Focus hours",
+    tasksDone: "Tasks done",
+    streak: "Streak",
+    badgesAchievements: "Badges & Achievements",
+    socialCommunity: "Social & Community",
+    recentActivity: "Recent Activity",
+    noRecentActivity: "No recent activity",
+    activityHeatmap: "Activity (12 weeks)",
+
+    // ReportsPage enhancements
+    focusSessionsLogged: "Focus sessions logged in this period",
+    taskCompletion: "Task Completion",
+    tasksFinishedVsTotal: "Tasks finished vs total assigned",
+    bestDay: "Best Day",
+    longestSession: "Longest Session",
+    singleSessionRecord: "Single session record",
+    avgSession: "Avg Session",
+    perSession: "per session",
+    noDataYet: "No data yet",
+
+    // Analytics i18n
+    weeklyTrend: "Weekly Trend",
+    studyDistribution: "Study Distribution",
+    weeklyGoal: "Weekly Goal",
+    insights: "Insights",
+    morningLabel: "Morning (6-12)",
+    afternoonLabel: "Afternoon (12-17)",
+    eveningLabel: "Evening (17-21)",
+    nightLabel: "Night (21-6)",
+    thisPeriod: "This Period",
+    previousPeriod: "Previous",
+    insightBestDay: "You study best on {day}s ({hours}h)",
+    insightPeakTime: "Peak study time: {period} ({pct}% of focus time)",
+    insightStreak: "Impressive {n}-day streak! Keep it going.",
+    insightTasks: "{pct}% task completion rate — excellent!",
+    insightSession: "Longest session: {n} minutes. Great focus!",
+    insightStart: "Start studying to see personalized insights here.",
 
     // Day short names
     sun: "Sun",
@@ -640,7 +710,7 @@ const translations = {
     taskOptional: "Tugas (opsional)",
     taskPlaceholder: "Apa yang sedang dipelajari?",
     pomodorosCompleted: "Sesi",
-    totalFocusTime: "Total Fokus",
+    totalFocusTime: "Total Waktu Fokus",
     sessionSaved: "Sesi tersimpan!",
 
     // Reports
@@ -657,6 +727,76 @@ const translations = {
     noStudySessions: "Belum ada sesi belajar",
     startFocusSession: "Mulai sesi fokus untuk melacak kemajuanmu",
     breakLabel: "Istirahat",
+
+    // WeeklyProgress enhancements
+    weeklyProgress: "Progres Mingguan",
+    totalLabel: "Total",
+    avgDaily: "Rata-rata/hari",
+    bestDay: "Hari terbaik",
+    totalSessions: "Sesi",
+    vsLastWeek: "vs minggu lalu",
+
+    // StudyGoals enhancements
+    completionRate: "Penyelesaian",
+    dueTodayBadge: "hari ini",
+    quickAddPlaceholder: "Tambah tugas...",
+
+    // DashboardRoadmap enhancements
+    noUpcomingItems: "Tidak ada agenda mendatang",
+    addTasksOrEvents: "Tambah tugas atau acara untuk memulai",
+    task: "tugas",
+    markComplete: "Tandai selesai",
+
+    // FocusMode enhancements
+    focusStats: "Statistik Fokus",
+    weekAvg: "Rata-rata minggu",
+    longest: "Terlama",
+    tasksToFocus: "Tugas untuk Difokuskan",
+    earlier: "Lebih awal",
+
+    // ProfilePage enhancements
+    memberSince: "Bergabung sejak",
+    level: "Level",
+    toNextLevel: "ke level berikutnya",
+    levelTitle: "Level Belajar",
+    monthlySummary: "Bulan Ini",
+    focusHours: "Jam fokus",
+    tasksDone: "Tugas selesai",
+    streak: "Streak",
+    badgesAchievements: "Lencana & Pencapaian",
+    socialCommunity: "Sosial & Komunitas",
+    recentActivity: "Aktivitas Terbaru",
+    noRecentActivity: "Belum ada aktivitas",
+    activityHeatmap: "Aktivitas (12 minggu)",
+
+    // ReportsPage enhancements
+    focusSessionsLogged: "Sesi fokus dalam periode ini",
+    taskCompletion: "Penyelesaian Tugas",
+    tasksFinishedVsTotal: "Tugas selesai vs total",
+    bestDay: "Hari Terbaik",
+    longestSession: "Sesi Terlama",
+    singleSessionRecord: "Rekor sesi tunggal",
+    avgSession: "Rata-rata Sesi",
+    perSession: "per sesi",
+    noDataYet: "Belum ada data",
+
+    // Analytics i18n
+    weeklyTrend: "Tren Mingguan",
+    studyDistribution: "Distribusi Belajar",
+    weeklyGoal: "Target Mingguan",
+    insights: "Wawasan",
+    morningLabel: "Pagi (6-12)",
+    afternoonLabel: "Siang (12-17)",
+    eveningLabel: "Sore (17-21)",
+    nightLabel: "Malam (21-6)",
+    thisPeriod: "Periode Ini",
+    previousPeriod: "Sebelumnya",
+    insightBestDay: "Belajar paling produktif hari {day} ({hours}j)",
+    insightPeakTime: "Waktu produktif: {period} ({pct}% dari waktu fokus)",
+    insightStreak: "Streak {n} hari! Terus semangat.",
+    insightTasks: "Tingkat penyelesaian tugas {pct}% — luar biasa!",
+    insightSession: "Sesi terlama: {n} menit. Fokus yang hebat!",
+    insightStart: "Mulai belajar untuk melihat wawasan yang dipersonalisasi.",
 
     // Day short names
     sun: "Min",

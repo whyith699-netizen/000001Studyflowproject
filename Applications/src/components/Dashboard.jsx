@@ -407,7 +407,7 @@ const Dashboard = () => {
                     isDarkMode ? "sf-dark-muted" : "text-blue-200"
                   }`}
                 >
-                  &mdash; {dailyQuote.author}
+                  &mdash; {dailyQuote.author === "Unknown" ? "Inspirational" : dailyQuote.author}
                 </p>
               </div>
 

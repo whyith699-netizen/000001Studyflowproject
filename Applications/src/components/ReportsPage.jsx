@@ -8,13 +8,17 @@ import ProductivityScore from './analytics/ProductivityScore';
 import TimeOfDayHeatmap from './analytics/TimeOfDayHeatmap';
 import SubjectBreakdownChart from './analytics/SubjectBreakdownChart';
 import TaskCompletionStats from './analytics/TaskCompletionStats';
+import WeeklyTrendChart from './analytics/WeeklyTrendChart';
+import StudyDistributionChart from './analytics/StudyDistributionChart';
+import InsightsCard from './analytics/InsightsCard';
+import GoalProgressRing from './analytics/GoalProgressRing';
 
 const ReportsPage = () => {
   const user = auth.currentUser;
   const { isDarkMode } = useDarkMode();
   const { t } = useLang();
   const [selectedPeriod, setSelectedPeriod] = useState('week');
-  
+
   const {
     subjectBreakdown,
     heatmap,
@@ -23,23 +27,32 @@ const ReportsPage = () => {
     totalFocusMinutes,
     completedTasksCount,
     totalTasksCount,
+    prevPeriodData,
+    dailyBreakdown,
+    studyDistribution,
+    longestSession,
+    bestDay,
+    avgSessionLength,
+    insights,
     loading
   } = useAdvancedAnalytics(selectedPeriod);
 
   const totalHours = Math.floor(totalFocusMinutes / 60);
   const remainingMinutes = Math.floor(totalFocusMinutes % 60);
 
+  const cardCls = isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100';
+
   return (
     <div className={`flex h-screen w-full overflow-hidden ${isDarkMode ? 'sf-dark-shell' : 'bg-gradient-to-br from-slate-50 to-white'}`}>
       <Sidebar user={user} />
-      
+
       <main
         className="flex-1 flex flex-col h-full overflow-y-auto pb-20 md:pb-0"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
       >
         <div className="flex-1 w-full px-4 py-3 md:px-6 md:py-4 flex flex-col gap-4">
-          {/* Header */}
-          <div className={`rounded-xl p-4 border shadow-sm ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+          {/* Row 1: Header */}
+          <div className={`rounded-xl p-4 border shadow-sm ${cardCls}`}>
             <div className="flex flex-wrap justify-between items-center gap-4">
               <div>
                 <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('studyReports')}</h1>
@@ -69,14 +82,13 @@ const ReportsPage = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {/* Top Row: Score and Stats */}
+              {/* Row 2: Score + Stat Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-1">
                   <ProductivityScore score={productivityScore} isDarkMode={isDarkMode} />
                 </div>
-                
                 <div className="lg:col-span-2 grid grid-cols-2 gap-4">
-                  <div className={`rounded-xl p-5 border shadow-sm flex flex-col justify-between ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+                  <div className={`rounded-xl p-5 border shadow-sm flex flex-col justify-between ${cardCls}`}>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="p-2.5 bg-blue-50 rounded-xl">
                         <i className="fas fa-stopwatch text-blue-600"></i>
@@ -85,31 +97,82 @@ const ReportsPage = () => {
                     </div>
                     <div>
                       <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{totalHours}h {remainingMinutes}m</p>
-                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Focus sessions logged in this period</p>
+                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('focusSessionsLogged')}</p>
                     </div>
                   </div>
-
-                  <div className={`rounded-xl p-5 border shadow-sm flex flex-col justify-between ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+                  <div className={`rounded-xl p-5 border shadow-sm flex flex-col justify-between ${cardCls}`}>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="p-2.5 bg-emerald-50 rounded-xl">
                         <i className="fas fa-check-double text-emerald-600"></i>
                       </div>
-                      <span className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Task Completion</span>
+                      <span className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('taskCompletion')}</span>
                     </div>
                     <div>
                       <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{completedTasksCount}/{totalTasksCount}</p>
-                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>Tasks finished vs total assigned</p>
+                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('tasksFinishedVsTotal')}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Middle Row: Heatmap */}
+              {/* Row 3: Daily Breakdown Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className={`rounded-xl p-4 border shadow-sm ${cardCls}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className="fas fa-trophy text-amber-500"></i>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('bestDay')}</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {bestDay ? `${(bestDay.minutes / 60).toFixed(1)}h` : '—'}
+                  </p>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {bestDay ? new Date(bestDay.date).toLocaleDateString(undefined, { weekday: 'long' }) : t('noDataYet')}
+                  </p>
+                </div>
+                <div className={`rounded-xl p-4 border shadow-sm ${cardCls}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className="fas fa-hourglass-half text-blue-500"></i>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('longestSession')}</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{longestSession}m</p>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('singleSessionRecord')}</p>
+                </div>
+                <div className={`rounded-xl p-4 border shadow-sm ${cardCls}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <i className="fas fa-chart-simple text-emerald-500"></i>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>{t('avgSession')}</span>
+                  </div>
+                  <p className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{avgSessionLength}m</p>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{t('perSession')}</p>
+                </div>
+              </div>
+
+              {/* Row 4: Weekly Trend + Goal Ring */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                <div className="lg:col-span-8">
+                  <WeeklyTrendChart
+                    dailyBreakdown={dailyBreakdown}
+                    prevPeriodData={prevPeriodData}
+                    isDarkMode={isDarkMode}
+                  />
+                </div>
+                <div className="lg:col-span-4">
+                  <GoalProgressRing totalFocusMinutes={totalFocusMinutes} isDarkMode={isDarkMode} />
+                </div>
+              </div>
+
+              {/* Row 5: Heatmap */}
               <div className="w-full">
                 <TimeOfDayHeatmap heatmapData={heatmap} isDarkMode={isDarkMode} />
               </div>
 
-              {/* Bottom Row: Breakdown and Subject Stats */}
+              {/* Row 6: Distribution Pie + Insights */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <StudyDistributionChart studyDistribution={studyDistribution} isDarkMode={isDarkMode} />
+                <InsightsCard insights={insights} isDarkMode={isDarkMode} />
+              </div>
+
+              {/* Row 7: Subject + Task Stats */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <SubjectBreakdownChart data={subjectBreakdown} isDarkMode={isDarkMode} />
                 <TaskCompletionStats data={classTaskStats} isDarkMode={isDarkMode} />
