@@ -19,21 +19,21 @@ if (pwaDisabledForBuild && 'serviceWorker' in navigator) {
   })
 }
 
-// Apply theme class before React mounts to avoid light flash on refresh/load.
+// Apply style theme before React mounts to avoid a flash on refresh/load.
 try {
-  const saved = localStorage.getItem('darkMode')
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const shouldUseDark = saved !== null ? JSON.parse(saved) : prefersDark
+  const themeStyles = new Set(['ocean', 'sakura', 'forest', 'studio'])
+  const savedStyle = localStorage.getItem('themeStyle')
+  const themeStyle = themeStyles.has(savedStyle) ? savedStyle : 'ocean'
 
-  if (shouldUseDark) {
-    document.documentElement.classList.add('dark')
-    document.body.classList.add('dark-mode')
-  } else {
-    document.documentElement.classList.remove('dark')
-    document.body.classList.remove('dark-mode')
+  if (localStorage.getItem('darkMode') !== null) {
+    localStorage.removeItem('darkMode')
   }
+
+  document.documentElement.dataset.themeStyle = themeStyle
+  document.documentElement.classList.remove('dark')
+  document.body.classList.remove('dark-mode')
 } catch {
-  // Ignore storage/matchMedia issues and continue rendering.
+  document.documentElement.dataset.themeStyle = 'ocean'
 }
 
 createRoot(document.getElementById('root')).render(

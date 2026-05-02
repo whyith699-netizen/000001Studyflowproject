@@ -22,7 +22,7 @@ const clampMinutes = (value, min, max, fallback) => {
 const SettingsPage = () => {
   const user = auth.currentUser;
   const navigate = useNavigate();
-  const { isDarkMode } = useDarkMode();
+  const { isDarkMode, themeStyle, setThemeStyle, themeStyles } = useDarkMode();
   const { t } = useLang();
   const { confirm } = useConfirm();
   const [settings, setSettings] = useState({
@@ -266,6 +266,50 @@ const SettingsPage = () => {
           <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
             <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
             <p className={`text-sm mt-1 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Customize your Study Flow experience</p>
+          </div>
+
+          {/* Style Section */}
+          <div className={`rounded-xl p-3 border shadow-sm ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
+            <div className={`flex items-center gap-2 mb-3 pb-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-100'}`}>
+              <i className="fas fa-palette text-blue-500"></i>
+              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('themeStyle')}</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {themeStyles.map((style) => {
+                const selected = themeStyle === style.id;
+                return (
+                  <button
+                    key={style.id}
+                    type="button"
+                    onClick={() => setThemeStyle(style.id)}
+                    className={`rounded-xl border p-3 text-left transition-all ${
+                      selected
+                        ? 'border-blue-500 bg-blue-50 shadow-sm'
+                        : isDarkMode
+                          ? 'border-slate-700 bg-slate-800 hover:bg-slate-700'
+                          : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                    }`}
+                    aria-pressed={selected}
+                  >
+                    <div className="mb-3 flex gap-1.5">
+                      {style.colors.map((color) => (
+                        <span
+                          key={color}
+                          className="h-7 flex-1 rounded-lg border border-white shadow-sm"
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {t(style.labelKey)}
+                      </span>
+                      {selected && <i className="fas fa-check-circle text-blue-500 text-sm"></i>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Success/Error Message */}

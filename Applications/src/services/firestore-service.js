@@ -388,10 +388,15 @@ export const classesService = {
 export const userService = {
   async fetchProfile() {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      console.log("fetchProfile: No user authenticated");
+      return;
+    }
+    console.log("fetchProfile: Fetching profile for user:", user.uid);
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
     let data = snap.exists() ? snap.data() : null;
+    console.log("fetchProfile: Document exists?", snap.exists(), "Data:", data);
     
     // Streak reset logic: if more than 1 day has passed since last claim, streak is broken
     if (data && data.lastStreakClaimDate) {
@@ -623,21 +628,41 @@ export const calendarEventsService = {
   }
 };
 
+// Static badge catalog — app-defined, no Firestore read needed
+export const BADGE_CATALOG = [
+  { id: 'first_session',    icon: 'fa-play-circle',   name: 'First Session',    description: 'Complete your first study session.' },
+  { id: 'streak_3',        icon: 'fa-fire',           name: '3-Day Streak',     description: 'Maintain a 3-day login streak.' },
+  { id: 'streak_7',        icon: 'fa-fire-alt',       name: 'Week Warrior',     description: 'Maintain a 7-day login streak.' },
+  { id: 'streak_30',       icon: 'fa-dragon',         name: 'Monthly Legend',   description: 'Maintain a 30-day login streak.' },
+  { id: 'tasks_10',        icon: 'fa-check-double',   name: 'Task Crusher',     description: 'Complete 10 tasks.' },
+  { id: 'tasks_50',        icon: 'fa-trophy',         name: 'Productivity Pro', description: 'Complete 50 tasks.' },
+  { id: 'focus_1h',        icon: 'fa-hourglass-half', name: '1 Hour Focus',     description: 'Accumulate 1 hour of focus time.' },
+  { id: 'focus_10h',       icon: 'fa-hourglass-end',  name: 'Deep Worker',      description: 'Accumulate 10 hours of focus time.' },
+  { id: 'focus_50h',       icon: 'fa-brain',          name: 'Focus Master',     description: 'Accumulate 50 hours of focus time.' },
+  { id: 'classes_added',   icon: 'fa-graduation-cap', name: 'Scholar',          description: 'Add your first class.' },
+  { id: 'night_owl',       icon: 'fa-moon',           name: 'Night Owl',        description: 'Study after 10 PM.' },
+  { id: 'early_bird',      icon: 'fa-sun',            name: 'Early Bird',       description: 'Study before 7 AM.' },
+];
+
 /**
  * Achievement Service
  */
 export const achievementService = {
-  async fetchBadges() {
-    const snap = await getDocs(collection(db, "badges"));
-    const badges = [];
-    snap.forEach(doc => badges.push({ id: doc.id, ...doc.data() }));
-    return badges;
+  fetchBadges() {
+    // Badges are defined locally — no Firestore read required
+    return Promise.resolve(BADGE_CATALOG);
   },
   async getMyAchievements() {
     const user = auth.currentUser;
-    if (!user) return [];
+    if (!user) {
+      console.log("getMyAchievements: No user authenticated");
+      return [];
+    }
+    console.log("getMyAchievements: Fetching for user:", user.uid);
     const ref = collection(db, "users", user.uid, "achievements");
+    console.log("getMyAchievements: Collection path:", ref.path);
     const snap = await getDocs(ref);
+    console.log("getMyAchievements: Query successful, docs:", snap.size);
     const achievements = [];
     snap.forEach(doc => achievements.push({ id: doc.id, ...doc.data() }));
     return achievements;

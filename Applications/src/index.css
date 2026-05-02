@@ -1,33 +1,43 @@
 @import "tailwindcss";
 
 /* ========================================
-   STUDYFLOW BRIGHT THEME
-   Matching extension color scheme
+   STUDYFLOW STYLE THEMES
+   Light-only multi-style color system
    ======================================== */
 
 :root {
-  /* New cross-app dark contract */
+  color-scheme: light;
   --sf-bg: #f8fafc;
   --sf-surface: #ffffff;
   --sf-surface-elevated: #f1f5f9;
+  --sf-surface-strong: #e2e8f0;
   --sf-border: #e2e8f0;
-  --sf-accent: #3b82f6;
+  --sf-accent: #2563eb;
   --sf-accent-hover: #2563eb;
+  --sf-accent-rgb: 37, 99, 235;
+  --sf-secondary: #0891b2;
+  --sf-secondary-rgb: 8, 145, 178;
+  --sf-tertiary: #059669;
+  --sf-tertiary-rgb: 5, 150, 105;
+  --sf-warm: #d97706;
+  --sf-warm-rgb: 217, 119, 6;
   --sf-gold: #d97706;
   --sf-text: #1e293b;
   --sf-text-muted: #64748b;
+  --sf-text-subtle: #94a3b8;
+  --sf-shell-gradient: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  --sf-accent-soft: rgba(var(--sf-accent-rgb), 0.1);
+  --sf-accent-softer: rgba(var(--sf-accent-rgb), 0.06);
+  --sf-accent-border: rgba(var(--sf-accent-rgb), 0.24);
 
-  /* Primary Colors - Extension Match */
   --primary: var(--sf-accent);
-  --primary-light: #60a5fa;
+  --primary-light: color-mix(in srgb, var(--sf-accent) 72%, white);
   --primary-dark: var(--sf-accent-hover);
 
-  /* Status Colors */
   --success: #059669;
   --warning: #d97706;
   --danger: #dc2626;
 
-  /* Neutral Colors - Bright Theme */
   --dark: #0f172a;
   --light: #f8fafc;
   --white: var(--sf-surface);
@@ -35,29 +45,26 @@
   --gray-light: var(--sf-surface-elevated);
   --gray-medium: #94a3b8;
 
-  /* Text Colors */
   --text: var(--sf-text);
   --text-light: var(--sf-text-muted);
   --border: var(--sf-border);
 
-  /* Shadows - Minimal */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 4px 12px rgba(37, 99, 235, 0.15);
+  --shadow-lg: 0 4px 12px rgba(var(--sf-accent-rgb), 0.15);
 
-  /* Chatbot UI tokens (paper clean) */
   --cb-surface: #ffffff;
   --cb-surface-muted: #f8fafc;
   --cb-surface-soft: #f1f5f9;
   --cb-border: #e2e8f0;
   --cb-text: #0f172a;
   --cb-text-muted: #64748b;
-  --cb-accent: #0284c7;
-  --cb-accent-hover: #0369a1;
-  --cb-accent-soft: #e0f2fe;
-  --cb-user-bubble-bg: #e0f2fe;
-  --cb-user-bubble-border: #bae6fd;
-  --cb-user-bubble-text: #0c4a6e;
+  --cb-accent: var(--sf-secondary);
+  --cb-accent-hover: color-mix(in srgb, var(--sf-secondary) 78%, black);
+  --cb-accent-soft: rgba(var(--sf-secondary-rgb), 0.12);
+  --cb-user-bubble-bg: rgba(var(--sf-secondary-rgb), 0.12);
+  --cb-user-bubble-border: rgba(var(--sf-secondary-rgb), 0.28);
+  --cb-user-bubble-text: color-mix(in srgb, var(--sf-secondary) 58%, black);
   --cb-assistant-bubble-bg: #ffffff;
   --cb-assistant-bubble-border: #e2e8f0;
   --cb-assistant-bubble-text: #0f172a;
@@ -67,60 +74,70 @@
   --cb-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
 }
 
-/* Dark Mode Variables */
-.dark,
-body.dark-mode {
-  --sf-bg: #000000;
-  --sf-surface: #121212;
-  --sf-surface-elevated: #1a1a1a;
-  --sf-surface-strong: #242424;
-  --sf-border: rgba(255, 255, 255, 0.08);
-  --sf-accent: #3b82f6;
-  --sf-accent-hover: #2563eb;
-  --sf-gold: #d97706;
-  --sf-text: rgba(255, 255, 255, 0.9);
-  --sf-text-muted: rgba(255, 255, 255, 0.6);
-
-  --primary: var(--sf-accent);
-  --primary-dark: var(--sf-accent-hover);
-  --dark: var(--sf-text);
-  --light: var(--sf-bg);
-  --white: var(--sf-surface);
-  --gray: var(--sf-border);
-  --gray-light: var(--sf-surface-elevated);
-  --gray-medium: var(--sf-text-muted);
-  --text: var(--sf-text);
-  --text-light: var(--sf-text-muted);
-  --border: var(--sf-border);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
-
-  --cb-surface: #121212;
-  --cb-surface-muted: #171717;
-  --cb-surface-soft: #1f1f1f;
-  --cb-border: rgba(255, 255, 255, 0.1);
-  --cb-text: rgba(255, 255, 255, 0.92);
-  --cb-text-muted: rgba(255, 255, 255, 0.62);
-  --cb-accent: #38bdf8;
-  --cb-accent-hover: #0ea5e9;
-  --cb-accent-soft: rgba(56, 189, 248, 0.14);
-  --cb-user-bubble-bg: #082f49;
-  --cb-user-bubble-border: #0ea5e9;
-  --cb-user-bubble-text: #e0f2fe;
-  --cb-assistant-bubble-bg: #171717;
-  --cb-assistant-bubble-border: rgba(255, 255, 255, 0.1);
-  --cb-assistant-bubble-text: rgba(255, 255, 255, 0.92);
-  --cb-error-bg: rgba(127, 29, 29, 0.28);
-  --cb-error-border: rgba(248, 113, 113, 0.3);
-  --cb-error-text: #fca5a5;
-  --cb-shadow: 0 18px 36px rgba(2, 6, 23, 0.35);
+[data-theme-style="sakura"] {
+  --sf-bg: #fff7f9;
+  --sf-surface: #ffffff;
+  --sf-surface-elevated: #fff1f4;
+  --sf-surface-strong: #ffe4ea;
+  --sf-border: #ffd1dc;
+  --sf-accent: #e11d48;
+  --sf-accent-hover: #be123c;
+  --sf-accent-rgb: 225, 29, 72;
+  --sf-secondary: #f97316;
+  --sf-secondary-rgb: 249, 115, 22;
+  --sf-tertiary: #7c3aed;
+  --sf-tertiary-rgb: 124, 58, 237;
+  --sf-warm: #0f766e;
+  --sf-warm-rgb: 15, 118, 110;
+  --sf-gold: var(--sf-secondary);
+  --sf-text: #2f1721;
+  --sf-text-muted: #7f5260;
+  --sf-text-subtle: #a87987;
+  --sf-shell-gradient: linear-gradient(135deg, #fff7f9 0%, #fffaf4 54%, #f7f3ff 100%);
 }
 
-/* Dark Mode Body Styles */
-body.dark-mode {
-  background: var(--sf-bg);
-  color: var(--text);
+[data-theme-style="forest"] {
+  --sf-bg: #f7fbf4;
+  --sf-surface: #ffffff;
+  --sf-surface-elevated: #edf7e7;
+  --sf-surface-strong: #dcefcf;
+  --sf-border: #c8dfbd;
+  --sf-accent: #15803d;
+  --sf-accent-hover: #166534;
+  --sf-accent-rgb: 21, 128, 61;
+  --sf-secondary: #65a30d;
+  --sf-secondary-rgb: 101, 163, 13;
+  --sf-tertiary: #334155;
+  --sf-tertiary-rgb: 51, 65, 85;
+  --sf-warm: #ca8a04;
+  --sf-warm-rgb: 202, 138, 4;
+  --sf-gold: var(--sf-warm);
+  --sf-text: #17251b;
+  --sf-text-muted: #526657;
+  --sf-text-subtle: #7b927f;
+  --sf-shell-gradient: linear-gradient(135deg, #f7fbf4 0%, #ffffff 48%, #fef9e7 100%);
+}
+
+[data-theme-style="studio"] {
+  --sf-bg: #f7f7f8;
+  --sf-surface: #ffffff;
+  --sf-surface-elevated: #f0f0f2;
+  --sf-surface-strong: #e4e4e7;
+  --sf-border: #d4d4d8;
+  --sf-accent: #27272a;
+  --sf-accent-hover: #18181b;
+  --sf-accent-rgb: 39, 39, 42;
+  --sf-secondary: #4f46e5;
+  --sf-secondary-rgb: 79, 70, 229;
+  --sf-tertiary: #0284c7;
+  --sf-tertiary-rgb: 2, 132, 199;
+  --sf-warm: #ea580c;
+  --sf-warm-rgb: 234, 88, 12;
+  --sf-gold: var(--sf-warm);
+  --sf-text: #18181b;
+  --sf-text-muted: #52525b;
+  --sf-text-subtle: #71717a;
+  --sf-shell-gradient: linear-gradient(135deg, #f7f7f8 0%, #ffffff 48%, #eef2ff 100%);
 }
 
 /* Custom scrollbar for cleaner look */
@@ -153,7 +170,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  background: var(--sf-shell-gradient);
   color: var(--text);
 }
 
@@ -161,11 +178,11 @@ body {
    SURFACE COLORS (Matching Extension)
    ======================================== */
 
-/* Surface color utilities for dark mode - matching Extension pattern */
+/* Surface color utilities consumed by Tailwind-heavy components */
 @theme {
-  --color-surface-1: #121212;
-  --color-surface-2: #1a1a1a;
-  --color-surface-3: #242424;
+  --color-surface-1: var(--sf-surface);
+  --color-surface-2: var(--sf-surface-elevated);
+  --color-surface-3: var(--sf-surface-strong);
 }
 
 /* ========================================
@@ -213,14 +230,14 @@ body {
 }
 
 .sf-accent-soft {
-  background: rgba(0, 229, 255, 0.16) !important;
+  background: var(--sf-accent-soft) !important;
   color: var(--sf-accent) !important;
 }
 
 .sf-active-accent {
-  background: rgba(0, 229, 255, 0.16) !important;
+  background: var(--sf-accent-soft) !important;
   color: var(--sf-accent) !important;
-  border-color: rgba(0, 229, 255, 0.4) !important;
+  border-color: var(--sf-accent-border) !important;
 }
 
 .sf-gold-text {
@@ -228,7 +245,7 @@ body {
 }
 
 .sf-gold-soft {
-  background: rgba(250, 204, 21, 0.18) !important;
+  background: rgba(var(--sf-warm-rgb), 0.16) !important;
   color: var(--sf-gold) !important;
 }
 
@@ -320,6 +337,113 @@ body.dark-mode .bg-blue-600.text-white,
 body.dark-mode .bg-blue-500.text-white,
 body.dark-mode .bg-blue-700.text-white {
   color: #fff !important;
+}
+
+/* Light style remapping for existing hardcoded blue Tailwind utilities */
+.text-blue-700,
+.text-blue-600,
+.text-blue-500,
+.text-blue-400,
+.text-blue-300 {
+  color: var(--sf-accent) !important;
+}
+
+.bg-blue-900,
+.bg-blue-800,
+.bg-blue-700,
+.bg-blue-600,
+.bg-blue-500,
+.checked\:bg-blue-600:checked {
+  background-color: var(--sf-accent) !important;
+}
+
+.hover\:bg-blue-700:hover,
+.hover\:bg-blue-600:hover {
+  background-color: var(--sf-accent-hover) !important;
+}
+
+.bg-blue-100,
+.bg-blue-50,
+.bg-blue-900\/50,
+.bg-blue-900\/40,
+.bg-blue-900\/30,
+.bg-blue-900\/20,
+.bg-blue-900\/10,
+.bg-blue-500\/15,
+.bg-blue-500\/10 {
+  background-color: var(--sf-accent-soft) !important;
+}
+
+.hover\:bg-blue-100:hover,
+.hover\:bg-blue-50:hover,
+.hover\:bg-blue-500\/10:hover {
+  background-color: rgba(var(--sf-accent-rgb), 0.16) !important;
+}
+
+.border-blue-700,
+.border-blue-600,
+.border-blue-500,
+.border-blue-400,
+.border-blue-300,
+.border-blue-200,
+.border-blue-100,
+.checked\:border-blue-600:checked {
+  border-color: var(--sf-accent-border) !important;
+}
+
+.focus\:border-blue-500:focus,
+.focus\:border-blue-600:focus {
+  border-color: var(--sf-accent) !important;
+}
+
+.focus\:ring-blue-500:focus,
+.focus\:ring-blue-600:focus {
+  --tw-ring-color: rgba(var(--sf-accent-rgb), 0.35) !important;
+}
+
+.ring-blue-700,
+.ring-blue-500,
+.ring-blue-400,
+.ring-blue-300,
+.ring-blue-200 {
+  --tw-ring-color: rgba(var(--sf-accent-rgb), 0.35) !important;
+}
+
+.shadow-blue-600\/20,
+.shadow-blue-500\/20,
+.shadow-blue-500\/15,
+.shadow-blue-200 {
+  --tw-shadow-color: rgba(var(--sf-accent-rgb), 0.22) !important;
+}
+
+.from-blue-600,
+.from-blue-500 {
+  --tw-gradient-from: var(--sf-accent) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position)) !important;
+}
+
+.from-blue-50,
+.from-slate-50 {
+  --tw-gradient-from: var(--sf-bg) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position)) !important;
+}
+
+.to-cyan-500,
+.to-indigo-50,
+.to-emerald-50 {
+  --tw-gradient-to: var(--sf-secondary) var(--tw-gradient-to-position) !important;
+}
+
+.to-white {
+  --tw-gradient-to: var(--sf-surface) var(--tw-gradient-to-position) !important;
+}
+
+.bg-\[\#3b82f6\] {
+  background-color: var(--sf-accent) !important;
+}
+
+.hover\:bg-\[\#2563eb\]:hover {
+  background-color: var(--sf-accent-hover) !important;
 }
 
 /* Tabular numbers for timer */

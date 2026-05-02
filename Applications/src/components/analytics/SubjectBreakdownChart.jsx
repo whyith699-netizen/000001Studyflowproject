@@ -29,8 +29,8 @@ const SubjectBreakdownChart = ({ data, isDarkMode }) => {
     <div className={`rounded-xl p-4 border shadow-sm flex flex-col h-full ${isDarkMode ? 'sf-dark-card sf-dark-border' : 'bg-white border-gray-100'}`}>
       <h3 className={`text-sm font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Focus by Subject</h3>
       
-      <div className="flex-1 min-h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
+      <div style={{ height: '200px' }}>
+        <ResponsiveContainer width="100%" height={200}>
           <PieChart>
             <Pie
               data={data}

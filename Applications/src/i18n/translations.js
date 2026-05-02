@@ -7,8 +7,13 @@ const translations = {
     notesMenu: "Notes",
     reports: "Reports",
     settings: "Settings",
-    lightMode: "Light Mode",
-    darkMode: "Dark Mode",
+    lightMode: "Style",
+    darkMode: "Style",
+    themeStyle: "Style",
+    themeStyleOcean: "Ocean",
+    themeStyleSakura: "Sakura",
+    themeStyleForest: "Forest",
+    themeStyleStudio: "Studio",
     logOut: "Log Out",
 
     // Dashboard
@@ -645,8 +650,13 @@ const translations = {
     notesMenu: "Catatan",
     reports: "Laporan",
     settings: "Pengaturan",
-    lightMode: "Mode Terang",
-    darkMode: "Mode Gelap",
+    lightMode: "Gaya",
+    darkMode: "Gaya",
+    themeStyle: "Gaya",
+    themeStyleOcean: "Samudra",
+    themeStyleSakura: "Sakura",
+    themeStyleForest: "Hutan",
+    themeStyleStudio: "Studio",
     logOut: "Keluar",
 
     // Dashboard

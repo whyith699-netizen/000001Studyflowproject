@@ -10,7 +10,7 @@ import { isNotesFeatureEnabled } from '../config/featureFlags';
 const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDarkMode, toggleDarkMode } = useDarkMode();
+  const { isDarkMode, cycleThemeStyle, currentThemeStyle } = useDarkMode();
   const { lang, toggleLang, t } = useLang();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
@@ -189,10 +189,10 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
               )}
             </button>
 
-            {/* Dark Mode Toggle */}
+            {/* Style Toggle */}
             <button
-              onClick={toggleDarkMode}
-              title={isCollapsed ? (isDarkMode ? t('lightMode') : t('darkMode')) : undefined}
+              onClick={cycleThemeStyle}
+              title={isCollapsed ? `${t('themeStyle')}: ${t(currentThemeStyle.labelKey)}` : undefined}
               className={`flex items-center gap-3 py-2 w-full text-left rounded-lg transition-colors ${
                 isCollapsed ? 'justify-center px-0' : 'px-3'
               } ${
@@ -201,8 +201,20 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
                   : 'hover:bg-gray-50 text-gray-600'
               }`}
             >
-              <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'} text-base w-5 text-center`}></i>
-              {!isCollapsed && <span className="text-sm font-medium">{isDarkMode ? t('lightMode') : t('darkMode')}</span>}
+              <span className="flex w-5 justify-center">
+                <span
+                  className="h-4 w-4 rounded-full border border-white shadow-sm"
+                  style={{ background: `linear-gradient(135deg, ${currentThemeStyle.colors[0]} 0%, ${currentThemeStyle.colors[1]} 52%, ${currentThemeStyle.colors[2]} 100%)` }}
+                />
+              </span>
+              {!isCollapsed && (
+                <>
+                  <span className="text-sm font-medium">{t('themeStyle')}</span>
+                  <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                    {t(currentThemeStyle.labelKey)}
+                  </span>
+                </>
+              )}
             </button>
 
             {/* Logout */}
@@ -301,13 +313,21 @@ const Sidebar = ({ user, collapsed, onToggleCollapse }) => {
               </span>
             </button>
             <button
-              onClick={toggleDarkMode}
+              onClick={cycleThemeStyle}
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm ${
                 isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <i className={`fas ${isDarkMode ? 'fa-sun' : 'fa-moon'} text-sm w-4 text-center`}></i>
-              <span>{isDarkMode ? t('lightMode') : t('darkMode')}</span>
+              <span className="flex w-4 justify-center">
+                <span
+                  className="h-3.5 w-3.5 rounded-full border border-white shadow-sm"
+                  style={{ background: `linear-gradient(135deg, ${currentThemeStyle.colors[0]} 0%, ${currentThemeStyle.colors[1]} 52%, ${currentThemeStyle.colors[2]} 100%)` }}
+                />
+              </span>
+              <span>{t('themeStyle')}</span>
+              <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
+                {t(currentThemeStyle.labelKey)}
+              </span>
             </button>
             <button
               onClick={() => {

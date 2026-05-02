@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { auth } from '../firebase-config';
+import { onAuthStateChanged } from 'firebase/auth';
 import { userService, achievementService, tasksService } from '../services/firestore-service';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useLang } from '../contexts/LanguageContext';
@@ -20,24 +21,41 @@ const ProfilePage = () => {
   const { totalFocusMinutes, completedTasksCount, monthlySummary, rawSessions } = useAdvancedAnalytics('all');
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [p, earned, all] = await Promise.all([
-          userService.getProfile(),
-          achievementService.getMyAchievements(),
-          achievementService.fetchBadges()
-        ]);
-        setProfile(p);
-        setEarnedBadges(earned);
-        setAllBadges(all);
-      } catch (error) {
-        console.error("Failed to load profile data:", error);
-      }
-    };
-    loadData();
+    let unsubTasks = () => {};
 
-    const unsubTasks = tasksService.subscribeToTasks(setRecentTasks);
-    return () => { unsubTasks(); };
+    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
+      if (!authUser) {
+        setProfile(null);
+        setEarnedBadges([]);
+        setAllBadges([]);
+        setRecentTasks([]);
+        unsubTasks();
+        return;
+      }
+
+      const loadData = async () => {
+        try {
+          const [p, earned, all] = await Promise.all([
+            userService.getProfile(),
+            achievementService.getMyAchievements().catch(() => []),
+            achievementService.fetchBadges().catch(() => []),
+          ]);
+          setProfile(p);
+          setEarnedBadges(earned);
+          setAllBadges(all);
+        } catch (error) {
+          console.error('Failed to load profile data:', error);
+        }
+      };
+
+      loadData();
+      unsubTasks = tasksService.subscribeToTasks(setRecentTasks);
+    });
+
+    return () => {
+      unsubscribeAuth();
+      unsubTasks();
+    };
   }, []);
 
   const totalHours = Math.floor(totalFocusMinutes / 60);

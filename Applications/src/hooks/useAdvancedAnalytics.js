@@ -2,6 +2,21 @@ import { useState, useEffect, useMemo } from 'react';
 import { tasksService, classesService, studySessionsService, userService } from '../services/firestore-service';
 import { startOfWeek, isWithinInterval, subWeeks, startOfMonth, subMonths } from 'date-fns';
 
+/**
+ * Safely convert a Firestore Timestamp, JS timestamp (number), or date string to a JS Date.
+ * Firestore Timestamp objects have a .toDate() method — calling new Date() on them directly
+ * returns Invalid Date, which silently breaks all date-based filtering.
+ */
+const toDate = (value) => {
+  if (!value) return new Date(0);
+  // Firestore Timestamp: has toDate() method
+  if (typeof value?.toDate === 'function') return value.toDate();
+  // Firestore Timestamp with seconds/nanoseconds (plain object, e.g. from REST)
+  if (typeof value?.seconds === 'number') return new Date(value.seconds * 1000);
+  // Number (ms since epoch) or ISO string
+  return new Date(value);
+};
+
 export const useAdvancedAnalytics = (period = 'week') => {
   const [tasks, setTasks] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -42,7 +57,7 @@ export const useAdvancedAnalytics = (period = 'week') => {
     else startDate = new Date(0);
 
     const filteredSessions = sessions.filter(s => {
-      const date = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const date = toDate(s.completedAt || s.timestamp || s.createdAt);
       return isWithinInterval(date, { start: startDate, end: now });
     });
 
@@ -51,7 +66,7 @@ export const useAdvancedAnalytics = (period = 'week') => {
     const periodDuration = now.getTime() - startDate.getTime();
     prevStartDate = new Date(startDate.getTime() - periodDuration);
     const prevFilteredSessions = sessions.filter(s => {
-      const date = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const date = toDate(s.completedAt || s.timestamp || s.createdAt);
       return isWithinInterval(date, { start: prevStartDate, end: startDate });
     });
 
@@ -81,7 +96,7 @@ export const useAdvancedAnalytics = (period = 'week') => {
     // 2. Heatmap Data
     const heatmap = Array(7).fill(0).map(() => Array(24).fill(0));
     filteredSessions.forEach(s => {
-      const date = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const date = toDate(s.completedAt || s.timestamp || s.createdAt);
       const day = date.getDay();
       const hour = date.getHours();
       heatmap[day][hour] += (s.duration || 0);
@@ -119,7 +134,7 @@ export const useAdvancedAnalytics = (period = 'week') => {
     // 5. Daily Breakdown (per-day aggregation)
     const dailyBreakdown = {};
     filteredSessions.forEach(s => {
-      const date = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const date = toDate(s.completedAt || s.timestamp || s.createdAt);
       const dayStr = date.toISOString().split('T')[0];
       if (!dailyBreakdown[dayStr]) dailyBreakdown[dayStr] = { minutes: 0, sessions: 0 };
       dailyBreakdown[dayStr].minutes += (s.duration || 0);
@@ -133,7 +148,7 @@ export const useAdvancedAnalytics = (period = 'week') => {
     // Previous period daily breakdown for trend chart
     const prevDailyBreakdown = {};
     prevFilteredSessions.forEach(s => {
-      const date = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const date = toDate(s.completedAt || s.timestamp || s.createdAt);
       const dayStr = date.toISOString().split('T')[0];
       if (!prevDailyBreakdown[dayStr]) prevDailyBreakdown[dayStr] = { minutes: 0 };
       prevDailyBreakdown[dayStr].minutes += (s.duration || 0);
@@ -142,7 +157,7 @@ export const useAdvancedAnalytics = (period = 'week') => {
     // 6. Study Distribution (Morning/Afternoon/Evening/Night)
     const studyDistribution = { morning: 0, afternoon: 0, evening: 0, night: 0 };
     filteredSessions.forEach(s => {
-      const date = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const date = toDate(s.completedAt || s.timestamp || s.createdAt);
       const hour = date.getHours();
       if (hour >= 6 && hour < 12) studyDistribution.morning += (s.duration || 0);
       else if (hour >= 12 && hour < 17) studyDistribution.afternoon += (s.duration || 0);
@@ -206,12 +221,12 @@ export const useAdvancedAnalytics = (period = 'week') => {
     weekStartDate.setDate(weekStartDate.getDate() - weekStartDate.getDay());
 
     const todaySessions = sessions.filter(s => {
-      const d = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const d = toDate(s.completedAt || s.timestamp || s.createdAt);
       return d >= todayStart;
     });
 
     const weekSessions = sessions.filter(s => {
-      const d = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const d = toDate(s.completedAt || s.timestamp || s.createdAt);
       return d >= weekStartDate;
     });
     const weekTotal = weekSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
@@ -230,14 +245,14 @@ export const useAdvancedAnalytics = (period = 'week') => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const monthSessions = sessions.filter(s => {
-      const d = new Date(s.completedAt || s.timestamp || s.createdAt);
+      const d = toDate(s.completedAt || s.timestamp || s.createdAt);
       return d >= monthStart;
     });
     const monthMinutes = monthSessions.reduce((sum, s) => sum + (s.duration || 0), 0);
 
     const monthCompleted = tasks.filter(task => {
       if (!task.completed) return false;
-      const d = new Date(task.completedAt || task.updatedAt || task.createdAt);
+      const d = toDate(task.completedAt || task.updatedAt || task.createdAt);
       return d >= monthStart;
     }).length;
 
