@@ -4,8 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "init-db": "node scripts/init-db.js",
     "test": "jest",
-    "sync": "node scripts/sync-data.js"
+    "sync": "node scripts/sync-data.js",
+    "sync:dry-run": "node scripts/sync-data.js --dry-run"
   },
   "keywords": [],
   "author": "",

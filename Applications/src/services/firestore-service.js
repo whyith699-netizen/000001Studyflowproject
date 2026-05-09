@@ -5,6 +5,7 @@
  */
 
 import { db, auth } from "../firebase-config";
+import { apiService } from "./api-service";
 import {
   uploadTaskAttachments,
   deleteTaskAttachments,
@@ -134,6 +135,15 @@ const normalizeTaskRecord = (task, classNameMap = new Map()) => {
   return { ...task, title, text, className: resolvedClassName };
 };
 
+const tryApi = async (label, fn, fallback) => {
+  try {
+    return await fn();
+  } catch (error) {
+    console.warn(`[MariaDB API fallback] ${label}:`, error);
+    return fallback();
+  }
+};
+
 // --- OBSERVABLE STATE UTILITY ---
 
 class ObservableState {
@@ -188,6 +198,22 @@ export const tasksService = {
     const user = auth.currentUser;
     if (!user) return;
 
+    return tryApi("tasks.fetchAll", async () => {
+      const [tasks, classes] = await Promise.all([
+        apiService.getTasks(),
+        classesState.isExpired() ? apiService.getClasses() : Promise.resolve(classesState.data),
+      ]);
+      if (Array.isArray(classes)) {
+        classesState.notify(classes);
+        classesState.markFetched();
+      }
+      const classNameMap = buildClassNameMap(classesState.data || []);
+      const normalized = (tasks || []).map(task => normalizeTaskRecord(task, classNameMap));
+      tasksState.notify(normalized);
+      tasksState.markFetched();
+      return normalized;
+    }, async () => {
+
     const tasksRef = collection(db, "users", user.uid, "tasks");
     const classesRef = collection(db, "users", user.uid, "classes");
 
@@ -208,6 +234,7 @@ export const tasksService = {
     tasksState.notify(tasks);
     tasksState.markFetched();
     return tasks;
+    });
   },
 
   subscribeToTasks(callback) {
@@ -241,7 +268,11 @@ export const tasksService = {
       createdAt: Date.now(), updatedAt: Date.now()
     };
 
-    await setDoc(taskRef, { ...newTask, updatedAt: serverTimestamp() });
+    await tryApi(
+      "tasks.addTask",
+      () => apiService.addTask(newTask),
+      () => setDoc(taskRef, { ...newTask, updatedAt: serverTimestamp() })
+    );
 
     // Update local state instantly
     const classNameMap = buildClassNameMap(classesState.data);
@@ -280,7 +311,11 @@ export const tasksService = {
     }
 
     delete payload.newFiles;
-    await updateDoc(taskRef, payload);
+    await tryApi(
+      "tasks.updateTask",
+      () => apiService.updateTask(taskId, { ...payload, updatedAt: Date.now() }),
+      () => updateDoc(taskRef, payload)
+    );
 
     // Update local state instantly
     const classNameMap = buildClassNameMap(classesState.data);
@@ -302,7 +337,11 @@ export const tasksService = {
     const task = tasksState.data.find(t => t.id === taskId);
     if (task) await deleteTaskAttachments(task.files || []);
 
-    await deleteDoc(taskRef);
+    await tryApi(
+      "tasks.deleteTask",
+      () => apiService.deleteTask(taskId),
+      () => deleteDoc(taskRef)
+    );
 
     // Update local state instantly
     tasksState.notify(tasksState.data.filter(t => t.id !== taskId));
@@ -316,6 +355,12 @@ export const classesService = {
   async fetchAll() {
     const user = auth.currentUser;
     if (!user) return;
+    return tryApi("classes.fetchAll", async () => {
+      const classes = await apiService.getClasses();
+      classesState.notify(classes || []);
+      classesState.markFetched();
+      return classes || [];
+    }, async () => {
     const ref = collection(db, "users", user.uid, "classes");
     const snap = await getDocs(ref);
     const classes = [];
@@ -323,6 +368,7 @@ export const classesService = {
     classesState.notify(classes);
     classesState.markFetched();
     return classes;
+    });
   },
 
   subscribeToClasses(callback) {
@@ -352,7 +398,11 @@ export const classesService = {
       updatedAt: Date.now()
     };
 
-    await setDoc(classRef, { ...newClass, updatedAt: serverTimestamp() });
+    await tryApi(
+      "classes.addClass",
+      () => apiService.addClass(newClass),
+      () => setDoc(classRef, { ...newClass, updatedAt: serverTimestamp() })
+    );
     classesState.notify([...classesState.data, newClass]);
     return newClass;
   },
@@ -370,14 +420,22 @@ export const classesService = {
       payload.time = s[0]?.time || "";
     }
 
-    await updateDoc(ref, payload);
+    await tryApi(
+      "classes.updateClass",
+      () => apiService.updateClass(classId, { ...payload, updatedAt: Date.now() }),
+      () => updateDoc(ref, payload)
+    );
     classesState.notify(classesState.data.map(c => c.id === classId ? { ...c, ...updates, updatedAt: Date.now() } : c));
   },
 
   async deleteClass(classId) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-    await deleteDoc(doc(db, "users", user.uid, "classes", classId));
+    await tryApi(
+      "classes.deleteClass",
+      () => apiService.deleteClass(classId),
+      () => deleteDoc(doc(db, "users", user.uid, "classes", classId))
+    );
     classesState.notify(classesState.data.filter(c => c.id !== classId));
   }
 };
@@ -392,6 +450,12 @@ export const userService = {
       console.log("fetchProfile: No user authenticated");
       return;
     }
+    return tryApi("user.fetchProfile", async () => {
+      const data = await apiService.getProfile();
+      profileState.notify(data);
+      profileState.markFetched();
+      return data;
+    }, async () => {
     console.log("fetchProfile: Fetching profile for user:", user.uid);
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
@@ -414,6 +478,7 @@ export const userService = {
     profileState.notify(data);
     profileState.markFetched();
     return data;
+    });
   },
 
   async getProfile() {
@@ -431,7 +496,11 @@ export const userService = {
     if (!user) throw new Error("Must be logged in");
     const ref = doc(db, "users", user.uid);
     const payload = { ...updates, lastSync: serverTimestamp(), updatedAt: serverTimestamp() };
-    await setDoc(ref, payload, { merge: true });
+    await tryApi(
+      "user.updateProfile",
+      () => apiService.saveProfile({ ...updates, lastSync: Date.now(), updatedAt: Date.now() }),
+      () => setDoc(ref, payload, { merge: true })
+    );
     profileState.notify({ ...profileState.data, ...updates });
   },
 
@@ -460,7 +529,11 @@ export const userService = {
       lastStreakClaimDate: today, 
       updatedAt: serverTimestamp() 
     };
-    await setDoc(ref, updates, { merge: true });
+    await tryApi(
+      "user.claimLoginStreak",
+      () => apiService.saveProfile(updates),
+      () => setDoc(ref, updates, { merge: true })
+    );
     
     profileState.notify({ ...profileState.data, ...updates });
     return { alreadyClaimed: false, streak: nextStreak };
@@ -474,6 +547,12 @@ export const studySessionsService = {
   async fetchSessions() {
     const user = auth.currentUser;
     if (!user) return;
+    return tryApi("sessions.fetchSessions", async () => {
+      const sessions = await apiService.getStudySessions();
+      sessionsState.notify(sessions || []);
+      sessionsState.markFetched();
+      return sessions || [];
+    }, async () => {
     const ref = collection(db, "users", user.uid, "studySessions");
     const q = query(ref, orderBy("completedAt", "desc"), limit(50));
     const snap = await getDocs(q);
@@ -482,6 +561,7 @@ export const studySessionsService = {
     sessionsState.notify(sessions);
     sessionsState.markFetched();
     return sessions;
+    });
   },
 
   subscribeToSessions(callback) {
@@ -500,7 +580,11 @@ export const studySessionsService = {
       classId: sessionData.classId || null, className: sessionData.className || null,
       completedAt: Date.now(), createdAt: Date.now()
     };
-    await setDoc(ref, newSession);
+    await tryApi(
+      "sessions.addSession",
+      () => apiService.addStudySession(newSession),
+      () => setDoc(ref, newSession)
+    );
     sessionsState.notify([newSession, ...sessionsState.data.slice(0, 49)]);
     return newSession;
   }
@@ -513,12 +597,19 @@ export const uniformsService = {
   async fetchUniforms() {
     const user = auth.currentUser;
     if (!user) return;
+    return tryApi("uniforms.fetchUniforms", async () => {
+      const data = await apiService.getUniforms();
+      uniformsState.notify(data || {});
+      uniformsState.markFetched();
+      return data || {};
+    }, async () => {
     const ref = doc(db, "users", user.uid, "settings", "uniforms");
     const snap = await getDoc(ref);
     const data = snap.exists() ? snap.data().days || {} : {};
     uniformsState.notify(data);
     uniformsState.markFetched();
     return data;
+    });
   },
 
   subscribeToUniforms(callback) {
@@ -529,7 +620,11 @@ export const uniformsService = {
   async saveUniforms(data) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-    await setDoc(doc(db, "users", user.uid, "settings", "uniforms"), { days: data, updatedAt: serverTimestamp() });
+    await tryApi(
+      "uniforms.saveUniforms",
+      () => apiService.saveUniforms(data),
+      () => setDoc(doc(db, "users", user.uid, "settings", "uniforms"), { days: data, updatedAt: serverTimestamp() })
+    );
     uniformsState.notify(data);
   }
 };
@@ -541,12 +636,19 @@ export const studyToolsService = {
   async fetchTools() {
     const user = auth.currentUser;
     if (!user) return;
+    return tryApi("tools.fetchTools", async () => {
+      const data = sanitizeStudyTools(await apiService.getStudyTools());
+      toolsState.notify(data);
+      toolsState.markFetched();
+      return data;
+    }, async () => {
     const ref = doc(db, "users", user.uid, "settings", "studyTools");
     const snap = await getDoc(ref);
     const data = snap.exists() ? sanitizeStudyTools(snap.data().items || []) : [];
     toolsState.notify(data);
     toolsState.markFetched();
     return data;
+    });
   },
 
   subscribeToStudyTools(callback) {
@@ -558,7 +660,11 @@ export const studyToolsService = {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
     const sanitized = sanitizeStudyTools(items);
-    await setDoc(doc(db, "users", user.uid, "settings", "studyTools"), { items: sanitized, updatedAt: serverTimestamp() }, { merge: true });
+    await tryApi(
+      "tools.saveStudyTools",
+      () => apiService.saveStudyTools(sanitized),
+      () => setDoc(doc(db, "users", user.uid, "settings", "studyTools"), { items: sanitized, updatedAt: serverTimestamp() }, { merge: true })
+    );
     toolsState.notify(sanitized);
     return sanitized;
   },
@@ -584,6 +690,12 @@ export const calendarEventsService = {
   async fetchEvents() {
     const user = auth.currentUser;
     if (!user) return;
+    return tryApi("calendar.fetchEvents", async () => {
+      const events = await apiService.getCalendarEvents();
+      eventsState.notify(events || []);
+      eventsState.markFetched();
+      return events || [];
+    }, async () => {
     const ref = collection(db, "users", user.uid, "calendarEvents");
     const q = query(ref, orderBy("date", "asc"));
     const snap = await getDocs(q);
@@ -592,6 +704,7 @@ export const calendarEventsService = {
     eventsState.notify(events);
     eventsState.markFetched();
     return events;
+    });
   },
 
   subscribeToEvents(callback) {
@@ -608,7 +721,11 @@ export const calendarEventsService = {
       date: data.date || "", endDate: data.endDate || null, time: data.time || "",
       description: sanitize(data.description || "", 500), createdAt: Date.now(), updatedAt: Date.now()
     };
-    await setDoc(doc(db, "users", user.uid, "calendarEvents", id), { ...newEvent, updatedAt: serverTimestamp() });
+    await tryApi(
+      "calendar.addEvent",
+      () => apiService.addCalendarEvent(newEvent),
+      () => setDoc(doc(db, "users", user.uid, "calendarEvents", id), { ...newEvent, updatedAt: serverTimestamp() })
+    );
     eventsState.notify([...eventsState.data, newEvent].sort((a,b) => a.date.localeCompare(b.date)));
     return newEvent;
   },
@@ -616,14 +733,22 @@ export const calendarEventsService = {
   async updateEvent(id, updates) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-    await updateDoc(doc(db, "users", user.uid, "calendarEvents", id), { ...updates, updatedAt: serverTimestamp() });
+    await tryApi(
+      "calendar.updateEvent",
+      () => apiService.updateCalendarEvent(id, { ...updates, updatedAt: Date.now() }),
+      () => updateDoc(doc(db, "users", user.uid, "calendarEvents", id), { ...updates, updatedAt: serverTimestamp() })
+    );
     eventsState.notify(eventsState.data.map(e => e.id === id ? { ...e, ...updates, updatedAt: Date.now() } : e).sort((a,b) => a.date.localeCompare(b.date)));
   },
 
   async deleteEvent(id) {
     const user = auth.currentUser;
     if (!user) throw new Error("Must be logged in");
-    await deleteDoc(doc(db, "users", user.uid, "calendarEvents", id));
+    await tryApi(
+      "calendar.deleteEvent",
+      () => apiService.deleteCalendarEvent(id),
+      () => deleteDoc(doc(db, "users", user.uid, "calendarEvents", id))
+    );
     eventsState.notify(eventsState.data.filter(e => e.id !== id));
   }
 };
@@ -658,6 +783,7 @@ export const achievementService = {
       console.log("getMyAchievements: No user authenticated");
       return [];
     }
+    return tryApi("achievements.getMyAchievements", () => apiService.getAchievements(), async () => {
     console.log("getMyAchievements: Fetching for user:", user.uid);
     const ref = collection(db, "users", user.uid, "achievements");
     console.log("getMyAchievements: Collection path:", ref.path);
@@ -666,12 +792,17 @@ export const achievementService = {
     const achievements = [];
     snap.forEach(doc => achievements.push({ id: doc.id, ...doc.data() }));
     return achievements;
+    });
   },
   async unlockBadge(badgeId, badgeName) {
     const user = auth.currentUser;
     if (!user) return;
     const ref = doc(db, "users", user.uid, "achievements", badgeId);
-    await setDoc(ref, { badgeName, unlockedAt: Date.now() });
+    await tryApi(
+      "achievements.unlockBadge",
+      () => apiService.unlockBadge(badgeId, badgeName),
+      () => setDoc(ref, { badgeName, unlockedAt: Date.now() })
+    );
   }
 };
 
@@ -682,6 +813,7 @@ export const friendService = {
   async addFriendByEmail(email) {
     const user = auth.currentUser;
     if (!user) throw new Error("Unauthorized");
+    return tryApi("friends.addFriendByEmail", () => apiService.addFriendByEmail(email), async () => {
     const q = query(collection(db, "users"), where("email", "==", email.trim().toLowerCase()));
     const snap = await getDocs(q);
     if (snap.empty) throw new Error("User not found");
@@ -697,14 +829,17 @@ export const friendService = {
       addedAt: Date.now()
     });
     return friendData;
+    });
   },
   async getFriends() {
     const user = auth.currentUser;
     if (!user) return [];
+    return tryApi("friends.getFriends", () => apiService.getFriends(), async () => {
     const snap = await getDocs(collection(db, "users", user.uid, "friends"));
     const friends = [];
     snap.forEach(doc => friends.push({ id: doc.id, ...doc.data() }));
     return friends;
+    });
   }
 };
 
@@ -715,6 +850,7 @@ export const inboxService = {
   async sendMessage(friendUid, content) {
     const user = auth.currentUser;
     if (!user) throw new Error("Unauthorized");
+    return tryApi("inbox.sendMessage", () => apiService.sendMessage(friendUid, content), async () => {
     const msgId = `msg_${Date.now()}`;
     const ref = doc(db, "users", friendUid, "inbox", msgId);
     await setDoc(ref, {
@@ -724,10 +860,14 @@ export const inboxService = {
       timestamp: Date.now(),
       isRead: false
     });
+    });
   },
   subscribeToInbox(callback) {
     const user = auth.currentUser;
     if (!user) return () => {};
+    apiService.getInbox()
+      .then(callback)
+      .catch(error => console.warn("[MariaDB API fallback] inbox.subscribeToInbox:", error));
     const q = query(collection(db, "users", user.uid, "inbox"), orderBy("timestamp", "desc"));
     return onSnapshot(q, (snap) => {
       const msgs = [];
