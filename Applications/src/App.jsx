@@ -50,7 +50,6 @@ function App() {
                 <MiniTimerPopup />
               ) : (
                 <>
-              <MobileReminderSync />
               <BrowserRouter basename={basename}>
                 <Routes>
                   <Route path="/" element={<Login />} />

@@ -1,24 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { auth } from '../firebase-config';
-import { onAuthStateChanged } from 'firebase/auth';
 
 const PrivateRoute = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-
-    // Cleanup subscription
-    return () => unsubscribe();
+    // Check localStorage for token and user
+    const token = localStorage.getItem('studyflow_token');
+    const userData = localStorage.getItem('studyflow_user');
+    
+    if (token && userData) {
+      setUser(JSON.parse(userData));
+    } else {
+      setUser(null);
+    }
+    setLoading(false);
   }, []);
 
-  // Show loading spinner while checking auth state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-black flex items-center justify-center">
@@ -30,12 +29,10 @@ const PrivateRoute = ({ children }) => {
     );
   }
 
-  // Redirect to login if not authenticated
   if (!user) {
     return <Navigate to="/" replace />;
   }
 
-  // Render protected content
   return children;
 };
 

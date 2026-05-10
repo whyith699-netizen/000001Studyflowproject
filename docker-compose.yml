@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: studyflow-frontend
     restart: always
+    ports:
+      - "80:80"
     depends_on:
       - api
     networks:
@@ -18,8 +20,10 @@ services:
       dockerfile: Dockerfile
     container_name: studyflow-api
     restart: always
+    ports:
+      - "3000:3000"
     environment:
-      - PORT=3001
+      - PORT=3000
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=${DB_USER:-studyflow}
@@ -41,18 +45,6 @@ services:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password_change_me}
     volumes:
       - mariadb_data:/var/lib/mysql
-    networks:
-      - studyflow-network
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: studyflow-tunnel
-    restart: always
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      - frontend
     networks:
       - studyflow-network
 

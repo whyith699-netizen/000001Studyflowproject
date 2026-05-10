@@ -6,7 +6,6 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase-config";
 import {
   studySessionsService,
@@ -227,7 +226,7 @@ export const TimerProvider = ({ children }) => {
   useEffect(() => {
     let unsubscribeProfile = () => {};
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       unsubscribeProfile();
 
       if (!user) {

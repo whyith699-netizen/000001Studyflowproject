@@ -5,12 +5,11 @@ const express = require('express');
 const cors    = require('cors');
 require('dotenv').config();
 
-// Import konfigurasi (inisialisasi Firebase Admin di sini)
-require('./config/firebase');
-
+// Konfigurasi Database
 const { testConnection } = require('./config/database');
 
 // Routes
+const authRouter       = require('./routes/auth');
 const usersRouter      = require('./routes/users');
 const classesRouter    = require('./routes/classes');
 const tasksRouter      = require('./routes/tasks');
@@ -48,6 +47,7 @@ app.get('/health', async (req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────────────────────────
+app.use('/api/auth',        authRouter);
 app.use('/api/users',       usersRouter);
 app.use('/api/classes',     classesRouter);
 app.use('/api/tasks',       tasksRouter);
