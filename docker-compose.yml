@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: ./Applications
+      dockerfile: Dockerfile
+    container_name: studyflow-frontend
+    restart: always
+    depends_on:
+      - api
+    networks:
+      - studyflow-network
+
+  api:
+    build: 
+      context: ./Backend/studyflow-api
+      dockerfile: Dockerfile
+    container_name: studyflow-api
+    restart: always
+    environment:
+      - PORT=3001
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=${DB_USER:-studyflow}
+      - DB_PASSWORD=${DB_PASSWORD:-studyflow_local_password}
+      - DB_NAME=${DB_NAME:-studyflow}
+    depends_on:
+      - db
+    networks:
+      - studyflow-network
+
+  db:
+    image: mariadb:10.11
+    container_name: studyflow-db
+    restart: always
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-studyflow}
+      MARIADB_USER: ${DB_USER:-studyflow}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-studyflow_local_password}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password_change_me}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - studyflow-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: studyflow-tunnel
+    restart: always
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    networks:
+      - studyflow-network
+
+networks:
+  studyflow-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:

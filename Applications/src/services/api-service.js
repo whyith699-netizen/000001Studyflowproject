@@ -1,11 +1,10 @@
-import { auth } from "../firebase-config";
-
-const baseUrl = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
+const envUrl = import.meta.env.VITE_API_BASE_URL;
+const baseUrl = (envUrl !== undefined && envUrl !== "" ? envUrl : (import.meta.env.PROD ? "" : "http://localhost:3001")).replace(/\/$/, "");
 
 async function request(path, options = {}) {
-  const user = auth.currentUser;
-  if (!user) throw new Error("Must be logged in");
-  const token = await user.getIdToken();
+  const token = localStorage.getItem('studyflow_token');
+  if (!token) throw new Error("Must be logged in");
+
   const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
@@ -14,6 +13,12 @@ async function request(path, options = {}) {
       ...(options.headers || {}),
     },
   });
+
+  if (response.status === 401) {
+    // Optional: redirect to login or refresh token
+    // localStorage.removeItem('studyflow_token');
+    // window.location.href = '/';
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -25,7 +30,7 @@ async function request(path, options = {}) {
 }
 
 const getUserId = () => {
-  const user = auth.currentUser;
+  const user = JSON.parse(localStorage.getItem('studyflow_user'));
   if (!user) throw new Error("Must be logged in");
   return user.uid;
 };
