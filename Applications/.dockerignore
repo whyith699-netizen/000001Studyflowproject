@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+npm-debug.log
+.git
+.gitignore
+.playwright-cli
+build_log.txt
+eslint_out.txt

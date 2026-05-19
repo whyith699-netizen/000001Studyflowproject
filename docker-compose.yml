@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   frontend:
     build: 
@@ -45,6 +43,20 @@ services:
       MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password_change_me}
     volumes:
       - mariadb_data:/var/lib/mysql
+    networks:
+      - studyflow-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin01
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    depends_on:
+      - db
     networks:
       - studyflow-network
 

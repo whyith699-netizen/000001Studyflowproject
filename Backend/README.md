@@ -1,116 +1,47 @@
-# StudyFlow Backend (Firebase Cloud Functions)
+# StudyFlow Backend API
 
-Backend V1 for StudyFlow profile API:
-- `GET /health`
-- `GET /v1/profile`
-- `PUT /v1/profile`
+This is the backend API for StudyFlow, built with Express.js and MariaDB.
 
-Stack:
-- Firebase Cloud Functions Gen2
-- TypeScript + Express
-- Firebase Admin SDK (Firestore + Auth token verify)
-- Zod request validation
+## Stack
+- Node.js + Express
+- MariaDB
+- JSON Web Tokens (JWT) for Authentication
 
-Region:
-- `asia-southeast1`
+## Setup
 
-Project:
-- `studydashboard-bd8f0`
+1. Copy `.env.example` to `.env` and fill in the database credentials.
+2. Initialize the database:
+   ```bash
+   cd studyflow-api
+   npm install
+   npm run init-db
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-## Folder Structure
+## Authentication
 
-- `Backend/firebase.json`
-- `Backend/.firebaserc`
-- `Backend/functions/src/index.ts`
-- `Backend/functions/src/app.ts`
-- `Backend/functions/src/firebaseDeps.ts`
-- `Backend/functions/test/app.test.ts`
+Authentication is handled via JWT. The API supports Email/Password login and Google Sign-In.
 
-## Local Commands
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login with email and password
+- `POST /api/auth/google` - Login with a Google Access Token
 
-From `Backend/functions`:
+## Endpoints
 
-```bash
-npm install
-npm run lint
-npm run test
-npm run build
-```
+All authenticated endpoints require a valid JWT token in the `Authorization` header:
+`Authorization: Bearer <jwt_token>`
 
-## Deploy
-
-1. Install Firebase CLI and login:
-```bash
-firebase login
-```
-
-2. Deploy function:
-```bash
-cd Backend/functions
-npm run deploy
-```
-
-Deployed base URL:
-
-`https://asia-southeast1-studydashboard-bd8f0.cloudfunctions.net/api/`
-
-## API Contract
-
-### GET `/health`
-Response `200`:
-```json
-{
-  "status": "ok",
-  "service": "studyflow-functions",
-  "version": "v1"
-}
-```
-
-### GET `/v1/profile`
-Headers:
-- `Authorization: Bearer <firebase_id_token>`
-
-Response `200`:
-```json
-{
-  "uid": "string",
-  "email": "string",
-  "displayName": "string",
-  "createdAt": "ISO-8601|null",
-  "updatedAt": "ISO-8601|null"
-}
-```
-
-### PUT `/v1/profile`
-Headers:
-- `Authorization: Bearer <firebase_id_token>`
-
-Body:
-```json
-{
-  "displayName": "string"
-}
-```
-
-Response `200`:
-```json
-{
-  "message": "Profile updated",
-  "profile": {
-    "uid": "string",
-    "email": "string",
-    "displayName": "string",
-    "updatedAt": "ISO-8601|null"
-  }
-}
-```
-
-Error format:
-```json
-{
-  "error": {
-    "code": "UNAUTHENTICATED|INVALID_ARGUMENT|INTERNAL",
-    "message": "human-readable"
-  }
-}
-```
+- `/api/auth` - Authentication routes
+- `/api/users` - User profile routes
+- `/api/classes` - Class management
+- `/api/tasks` - Task management
+- `/api/study-tools` - Study tools configuration
+- `/api/study-sessions` - Study sessions tracking
+- `/api/calendar-events` - Calendar events
+- `/api/uniforms` - Uniform settings
+- `/api/achievements` - User achievements
+- `/api/friends` - Friends management
+- `/api/inbox` - Notifications inbox

@@ -12,6 +12,6 @@ COPY . .
 # Ensure the app can find the service account if mounted or copied
 ENV FIREBASE_SERVICE_ACCOUNT_PATH=/app/service-account.json
 
-EXPOSE 3001
+EXPOSE 3000
 
 CMD ["npm", "start"]

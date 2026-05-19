@@ -1,5 +1,6 @@
-jest.mock('./config/firebase', () => ({ admin: { apps: [] }, db: null }));
 
+
+jest.mock('uuid', () => ({ v4: () => 'test-uuid-1234' }));
 jest.mock('./config/database', () => ({
     query: jest.fn(),
     testConnection: jest.fn(),
@@ -9,9 +10,11 @@ const request = require('supertest');
 const { query, testConnection } = require('./config/database');
 const app = require('./app');
 
+const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('./middleware/auth');
+
 function tokenFor(uid = 'user-1', email = 'user@example.com') {
-    const payload = Buffer.from(JSON.stringify({ user_id: uid, sub: uid, email })).toString('base64url');
-    return `header.${payload}.signature`;
+    return jwt.sign({ uid, email }, JWT_SECRET);
 }
 
 function auth(uid = 'user-1') {
@@ -34,7 +37,7 @@ describe('GET /health', () => {
 });
 
 describe('authenticated API routes', () => {
-    it('rejects requests without a Firebase token', async () => {
+    it('rejects requests without an Auth token', async () => {
         const res = await request(app).get('/api/calendar-events/user-1');
 
         expect(res.statusCode).toBe(401);

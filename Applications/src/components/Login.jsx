@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useLang } from "../contexts/LanguageContext";
 import { useDarkMode } from "../contexts/DarkModeContext";
 import studyFlowLogo from "../assets/StudyFlow_logo.jpg";
+import { useGoogleLogin } from '@react-oauth/google';
+import { SocialLogin } from '@capgo/capacitor-social-login';
+import { isNativePlatform } from '../config/featureFlags';
 
 const Login = () => {
   const { t } = useLang();
@@ -28,13 +31,15 @@ const Login = () => {
     setError(null);
     setIsSubmitting(true);
 
+    const envUrl = import.meta.env.VITE_API_BASE_URL;
+    const baseUrl = (envUrl !== undefined && envUrl !== "" ? envUrl : (import.meta.env.PROD ? "" : "http://localhost:3001")).replace(/\/$/, "");
     const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
     const payload = isRegistering 
       ? { email, password, displayName }
       : { email, password };
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -56,6 +61,67 @@ const Login = () => {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleAuth = async (accessToken) => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      
+      const envUrl = import.meta.env.VITE_API_BASE_URL;
+      const baseUrl = (envUrl !== undefined && envUrl !== "" ? envUrl : (import.meta.env.PROD ? "" : "http://localhost:3001")).replace(/\/$/, "");
+
+      const response = await fetch(`${baseUrl}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Google login failed');
+
+      localStorage.setItem('studyflow_token', data.token);
+      localStorage.setItem('studyflow_user', JSON.stringify(data.user));
+      navigate("/dashboard", { replace: true });
+      window.location.reload();
+    } catch (err) {
+      console.error("Google auth failed:", err);
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: (tokenResponse) => handleGoogleAuth(tokenResponse.access_token),
+    onError: () => setError("Failed to login with Google"),
+  });
+
+  const handleNativeGoogleLogin = async () => {
+    try {
+      const result = await SocialLogin.login({
+        provider: 'google',
+        options: {
+          scopes: ['profile', 'email']
+        }
+      });
+      if (result.result.accessToken) {
+        handleGoogleAuth(result.result.accessToken);
+      } else {
+        throw new Error("No access token received from Google");
+      }
+    } catch (err) {
+      console.error("Native Google login failed:", err);
+      setError("Failed to login with Google on device.");
+    }
+  };
+
+  const onGoogleLoginClick = (e) => {
+    e.preventDefault();
+    if (isNativePlatform) {
+      handleNativeGoogleLogin();
+    } else {
+      loginWithGoogle();
     }
   };
 
@@ -146,6 +212,32 @@ const Login = () => {
               {isRegistering ? "BUAT AKUN BARU" : "MASUK KE DASHBOARD"}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className={`w-full border-t ${isDarkMode ? "border-slate-700" : "border-gray-300"}`}></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className={`px-2 ${isDarkMode ? "bg-slate-800 sf-dark-text" : "bg-white text-gray-500"}`}>Atau lanjutkan dengan</span>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={onGoogleLoginClick}
+                disabled={isSubmitting}
+                className={`w-full flex justify-center items-center gap-3 py-3 px-4 border rounded-xl shadow-sm text-sm font-semibold transition-all transform active:scale-[0.98] ${
+                  isDarkMode 
+                    ? "bg-slate-700/50 hover:bg-slate-700 border-slate-600 sf-dark-text" 
+                    : "bg-white hover:bg-gray-50 border-gray-300 text-gray-700"
+                }`}
+              >
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google logo" className="w-5 h-5" />
+                Google
+              </button>
+            </div>
+          </div>
 
           <div className="mt-8 text-center">
             <p className={`text-xs ${isDarkMode ? "sf-dark-muted" : "text-gray-500"}`}>
